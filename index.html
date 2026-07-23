@@ -512,6 +512,10 @@ select.select-status{
       <button type="submit" class="btn">Entrar</button>
     </form>
     <p class="login-rodape">Acesso restrito. Fale com a CAP Consultoria para receber suas credenciais.</p>
+    <div id="diagnostico-container" style="margin-top:14px;text-align:center;">
+      <button type="button" id="btn-diagnostico" style="background:none;border:none;color:var(--texto-suave);font-size:11.5px;text-decoration:underline;cursor:pointer;">Testar conexão com o sistema</button>
+      <div id="diagnostico-resultado" style="display:none;text-align:left;margin-top:10px;padding:12px;background:#f4f4f5;border-radius:8px;font-size:11.5px;font-family:monospace;white-space:pre-wrap;max-height:220px;overflow-y:auto;color:var(--texto);"></div>
+    </div>
   </div>
 </div>
 
@@ -863,7 +867,39 @@ select.select-status{
     </div>
     <div class="campo"><label>Título</label><input type="text" id="visita-titulo" placeholder="Ex: Visita de auditoria mensal"></div>
     <div class="campo"><label>Descrição</label><input type="text" id="visita-descricao" placeholder="Detalhes (opcional)"></div>
-    <div class="campo"><label>Data da visita</label><input type="date" id="visita-data"></div>
+
+    <div class="campo" style="display:flex;align-items:center;gap:8px;">
+      <input type="checkbox" id="visita-recorrente" style="width:auto;accent-color:var(--laranja);">
+      <label for="visita-recorrente" style="margin:0;text-transform:none;font-size:13.5px;font-weight:500;color:var(--texto);letter-spacing:normal;cursor:pointer;">Visita permanente (repete toda semana no mesmo dia)</label>
+    </div>
+
+    <div id="bloco-visita-data-unica">
+      <div class="campo"><label>Data da visita</label><input type="date" id="visita-data"></div>
+    </div>
+
+    <div id="bloco-visita-recorrente" style="display:none;">
+      <div class="campo">
+        <label>Dia da semana</label>
+        <select id="visita-dia-semana">
+          <option value="1">Toda segunda-feira</option>
+          <option value="2">Toda terça-feira</option>
+          <option value="3">Toda quarta-feira</option>
+          <option value="4">Toda quinta-feira</option>
+          <option value="5">Toda sexta-feira</option>
+          <option value="6">Todo sábado</option>
+          <option value="0">Todo domingo</option>
+        </select>
+      </div>
+      <div class="campo">
+        <label>A partir de</label>
+        <input type="date" id="visita-data-inicio-recorrencia">
+      </div>
+      <div class="campo">
+        <label>Repetir até (opcional)</label>
+        <input type="date" id="visita-recorrencia-ate">
+      </div>
+    </div>
+
     <div class="campo-linha">
       <div class="campo"><label>Hora início</label><input type="time" id="visita-hora-inicio"></div>
       <div class="campo"><label>Hora fim</label><input type="time" id="visita-hora-fim"></div>
@@ -882,6 +918,7 @@ select.select-status{
       <button class="btn btn-outline" id="btn-cancelar-visita">Cancelar</button>
       <button class="btn" id="btn-salvar-visita">Salvar</button>
     </div>
+    <button class="btn btn-outline" id="btn-excluir-visita-modal" style="margin-top:10px;color:var(--vermelho);border-color:#f3b9b4;display:none;">🗑 Excluir esta visita</button>
   </div>
 </div>
 
@@ -965,6 +1002,51 @@ async function pingSupabase() {
 }
 pingSupabase(); // ping imediato ao abrir a página
 setInterval(pingSupabase, 4 * 60 * 60 * 1000); // repete a cada 4 horas enquanto a aba ficar aberta
+
+/* ================= DIAGNÓSTICO (botão "Testar conexão" na tela de login) ================= */
+document.getElementById("btn-diagnostico").addEventListener("click", async () => {
+  const resultado = document.getElementById("diagnostico-resultado");
+  resultado.style.display = "block";
+  resultado.textContent = "Testando...\n";
+
+  const linhas = [];
+  const testar = async (nome, path) => {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+        headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
+      });
+      const txt = await res.text();
+      if (!res.ok) {
+        linhas.push(`✗ ${nome}: HTTP ${res.status} — ${txt.slice(0, 200)}`);
+        return;
+      }
+      let dados;
+      try { dados = JSON.parse(txt); } catch (e) {
+        linhas.push(`✗ ${nome}: resposta não é JSON válido — ${txt.slice(0, 200)}`);
+        return;
+      }
+      linhas.push(`✓ ${nome}: OK, ${Array.isArray(dados) ? dados.length : "?"} registro(s)`);
+    } catch (e) {
+      linhas.push(`✗ ${nome}: erro de rede — ${e.message}`);
+    }
+  };
+
+  linhas.push(`Data/hora do teste: ${new Date().toLocaleString("pt-BR")}`);
+  linhas.push(`URL do Supabase: ${SUPABASE_URL}`);
+  linhas.push(`Navegador consegue rodar JavaScript: sim (você está vendo este texto)`);
+  linhas.push("");
+
+  await testar("Tabela cap_usuarios", "cap_usuarios?select=id&limit=5");
+  await testar("Tabela cap_tarefas", "cap_tarefas?select=id&limit=5");
+  await testar("Tabela cap_categorias", "cap_categorias?select=id&limit=5");
+  await testar("Tabela cap_visitas", "cap_visitas?select=id&limit=5");
+
+  linhas.push("");
+  linhas.push(`Biblioteca de gráficos (Chart.js) carregada: ${typeof Chart !== "undefined" ? "sim" : "NÃO — pode ter sido bloqueada pela rede"}`);
+
+  resultado.textContent = linhas.join("\n");
+});
+
 
 /* ================= ESTADO ================= */
 let usuarioAtual = null;
@@ -1876,6 +1958,40 @@ function visitasFiltradas() {
   return lista;
 }
 
+// Transforma visitas recorrentes em ocorrências concretas dentro de um período,
+// mantendo os dados originais da visita (id, título, etc.) em cada ocorrência.
+// Visitas não-recorrentes aparecem como uma única ocorrência normal.
+function expandirOcorrencias(lista, dataInicioPeriodo, dataFimPeriodo) {
+  const ocorrencias = [];
+  lista.forEach(v => {
+    if (!v.recorrente) {
+      const d = parseDataSegura(v.data_visita);
+      if (d && d >= dataInicioPeriodo && d <= dataFimPeriodo) {
+        ocorrencias.push({ ...v, data_ocorrencia: v.data_visita });
+      }
+      return;
+    }
+    // Recorrente: gera uma ocorrência para cada dia da semana correspondente
+    // entre o início da recorrência (ou início do período, o que for maior) e o fim.
+    const inicioRecorrencia = parseDataSegura(v.data_visita) || dataInicioPeriodo;
+    const fimRecorrencia = parseDataSegura(v.recorrencia_ate) || dataFimPeriodo;
+    const diaSemanaAlvo = v.dia_semana_recorrencia;
+    if (diaSemanaAlvo === null || diaSemanaAlvo === undefined) return;
+
+    let cursor = new Date(Math.max(inicioRecorrencia.getTime(), dataInicioPeriodo.getTime()));
+    const fimEfetivo = new Date(Math.min(fimRecorrencia.getTime(), dataFimPeriodo.getTime()));
+    // avança até o primeiro dia da semana correto
+    while (cursor.getDay() !== diaSemanaAlvo && cursor <= fimEfetivo) {
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    while (cursor <= fimEfetivo) {
+      ocorrencias.push({ ...v, data_ocorrencia: cursor.toISOString().slice(0, 10) });
+      cursor.setDate(cursor.getDate() + 7);
+    }
+  });
+  return ocorrencias;
+}
+
 function renderizarAgendaPagina() {
   document.getElementById("agenda-sub").textContent = usuarioAtual.tipo === "admin"
     ? "Calendário completo de visitas — filtre por empresa se quiser"
@@ -1899,14 +2015,13 @@ function renderizarCalendario() {
   const totalDias = ultimoDia.getDate();
 
   const lista = visitasFiltradas();
+  const ocorrencias = expandirOcorrencias(lista, primeiroDia, ultimoDia);
   const visitasPorDia = {};
-  lista.forEach(v => {
-    const d = parseDataSegura(v.data_visita);
-    if (!d) return; // ignora visitas sem data válida em vez de quebrar a página inteira
-    if (d.getFullYear() === calendarioAnoAtual && d.getMonth() === calendarioMesAtual) {
-      const dia = d.getDate();
-      (visitasPorDia[dia] = visitasPorDia[dia] || []).push(v);
-    }
+  ocorrencias.forEach(v => {
+    const d = parseDataSegura(v.data_ocorrencia);
+    if (!d) return;
+    const dia = d.getDate();
+    (visitasPorDia[dia] = visitasPorDia[dia] || []).push(v);
   });
 
   const hoje = new Date();
@@ -1925,20 +2040,22 @@ function renderizarCalendario() {
 
 function renderizarListaVisitas() {
   const hoje = new Date(); hoje.setHours(0,0,0,0);
-  const lista = visitasFiltradas()
-    .filter(v => { const d = parseDataSegura(v.data_visita); return d && d >= hoje; })
-    .sort((a,b) => (a.data_visita || "").localeCompare(b.data_visita || ""))
+  const limiteFuturo = new Date(hoje); limiteFuturo.setDate(limiteFuturo.getDate() + 90); // horizonte de 90 dias para recorrências
+  const lista = visitasFiltradas();
+  const ocorrencias = expandirOcorrencias(lista, hoje, limiteFuturo)
+    .filter(v => { const d = parseDataSegura(v.data_ocorrencia); return d && d >= hoje; })
+    .sort((a,b) => (a.data_ocorrencia || "").localeCompare(b.data_ocorrencia || ""))
     .slice(0, 10);
   const el = document.getElementById("lista-visitas");
-  document.getElementById("visitas-vazio").style.display = lista.length ? "none" : "block";
-  el.innerHTML = lista.map(v => {
-    const d = parseDataSegura(v.data_visita);
+  document.getElementById("visitas-vazio").style.display = ocorrencias.length ? "none" : "block";
+  el.innerHTML = ocorrencias.map(v => {
+    const d = parseDataSegura(v.data_ocorrencia);
     const cli = getClienteById(v.cliente_id);
     return `
       <div class="agenda-dia">
         <div class="agenda-data"><div class="num">${d ? d.getDate() : "—"}</div><div class="mes">${d ? MESES[d.getMonth()] : ""}</div></div>
         <div class="agenda-info">
-          <strong>${v.titulo || "(sem título)"}</strong>
+          <strong>${v.titulo || "(sem título)"}${v.recorrente ? ' <span style="font-size:10px;color:var(--laranja-dark);font-weight:700;">(PERMANENTE)</span>' : ''}</strong>
           <span>${usuarioAtual.tipo === "admin" && cli ? (cli.empresa || cli.nome) + " • " : ""}${v.hora_inicio ? v.hora_inicio.slice(0,5) : ""}${v.hora_fim ? " às " + v.hora_fim.slice(0,5) : ""}${v.local ? " • " + v.local : ""}</span>
           <div class="badge ${v.status || 'agendada'}">${v.status === 'agendada' ? 'Agendada' : v.status === 'realizada' ? 'Realizada' : v.status === 'cancelada' ? 'Cancelada' : 'Agendada'}</div>
         </div>
@@ -1958,12 +2075,19 @@ function abrirNovaVisita() {
   document.getElementById("visita-titulo").value = "";
   document.getElementById("visita-descricao").value = "";
   document.getElementById("visita-data").value = "";
+  document.getElementById("visita-recorrente").checked = false;
+  document.getElementById("visita-dia-semana").value = "1";
+  document.getElementById("visita-data-inicio-recorrencia").value = "";
+  document.getElementById("visita-recorrencia-ate").value = "";
+  document.getElementById("bloco-visita-data-unica").style.display = "block";
+  document.getElementById("bloco-visita-recorrente").style.display = "none";
   document.getElementById("visita-hora-inicio").value = "";
   document.getElementById("visita-hora-fim").value = "";
   document.getElementById("visita-local").value = "";
   document.getElementById("visita-responsavel").value = "";
   document.getElementById("visita-status").value = "agendada";
   document.getElementById("campo-visita-cliente").style.display = usuarioAtual.tipo === "admin" ? "block" : "none";
+  document.getElementById("btn-excluir-visita-modal").style.display = "none";
   document.getElementById("modal-visita").style.display = "flex";
 }
 
@@ -1974,25 +2098,50 @@ window.abrirEdicaoVisita = function(id) {
   document.getElementById("modal-visita-titulo").textContent = "Editar visita";
   document.getElementById("visita-id").value = v.id;
   document.getElementById("visita-cliente").value = v.cliente_id;
-  document.getElementById("visita-titulo").value = v.titulo;
+  document.getElementById("visita-titulo").value = v.titulo || "";
   document.getElementById("visita-descricao").value = v.descricao || "";
-  document.getElementById("visita-data").value = v.data_visita || "";
+  document.getElementById("visita-recorrente").checked = !!v.recorrente;
+  if (v.recorrente) {
+    document.getElementById("visita-dia-semana").value = String(v.dia_semana_recorrencia ?? 1);
+    document.getElementById("visita-data-inicio-recorrencia").value = v.data_visita || "";
+    document.getElementById("visita-recorrencia-ate").value = v.recorrencia_ate || "";
+    document.getElementById("bloco-visita-data-unica").style.display = "none";
+    document.getElementById("bloco-visita-recorrente").style.display = "block";
+  } else {
+    document.getElementById("visita-data").value = v.data_visita || "";
+    document.getElementById("bloco-visita-data-unica").style.display = "block";
+    document.getElementById("bloco-visita-recorrente").style.display = "none";
+  }
   document.getElementById("visita-hora-inicio").value = v.hora_inicio || "";
   document.getElementById("visita-hora-fim").value = v.hora_fim || "";
   document.getElementById("visita-local").value = v.local || "";
   document.getElementById("visita-responsavel").value = v.responsavel || "";
-  document.getElementById("visita-status").value = v.status;
+  document.getElementById("visita-status").value = v.status || "agendada";
+  document.getElementById("btn-excluir-visita-modal").style.display = usuarioAtual.tipo === "admin" ? "block" : "none";
   document.getElementById("modal-visita").style.display = "flex";
 };
 
+// Alterna entre "data única" e "recorrente toda semana"
+document.getElementById("visita-recorrente").addEventListener("change", (e) => {
+  const recorrente = e.target.checked;
+  document.getElementById("bloco-visita-data-unica").style.display = recorrente ? "none" : "block";
+  document.getElementById("bloco-visita-recorrente").style.display = recorrente ? "block" : "none";
+});
+
 window.excluirVisita = async function(id) {
-  if (!confirm("Excluir esta visita?")) return;
+  if (!confirm("Excluir esta visita? Essa ação não pode ser desfeita.")) return;
   try {
     await sb(`cap_visitas?id=eq.${id}`, { method: "DELETE" });
     todasVisitas = todasVisitas.filter(v => v.id !== id);
     renderizarAgendaPagina();
+    document.getElementById("modal-visita").style.display = "none";
   } catch (err) { alert("Erro ao excluir visita: " + err.message); }
 };
+
+document.getElementById("btn-excluir-visita-modal").addEventListener("click", () => {
+  const id = document.getElementById("visita-id").value;
+  if (id) excluirVisita(id);
+});
 
 document.addEventListener("click", async (e) => {
   if (e.target && e.target.id === "btn-cancelar-visita") {
@@ -2001,14 +2150,23 @@ document.addEventListener("click", async (e) => {
   if (e.target && e.target.id === "btn-salvar-visita") {
     const id = document.getElementById("visita-id").value;
     const titulo = document.getElementById("visita-titulo").value.trim();
-    const data = document.getElementById("visita-data").value;
-    if (!titulo || !data) { alert("Informe ao menos título e data da visita."); return; }
+    const recorrente = document.getElementById("visita-recorrente").checked;
+    const data = recorrente
+      ? document.getElementById("visita-data-inicio-recorrencia").value
+      : document.getElementById("visita-data").value;
+
+    if (!titulo) { alert("Informe o título da visita."); return; }
+    if (!data) { alert(recorrente ? "Informe a partir de quando a visita recorrente começa." : "Informe a data da visita."); return; }
+
     const clienteId = usuarioAtual.tipo === "admin" ? document.getElementById("visita-cliente").value : usuarioAtual.id;
     const body = {
       cliente_id: clienteId,
       titulo,
       descricao: document.getElementById("visita-descricao").value.trim(),
       data_visita: data,
+      recorrente: recorrente,
+      dia_semana_recorrencia: recorrente ? parseInt(document.getElementById("visita-dia-semana").value, 10) : null,
+      recorrencia_ate: recorrente ? (document.getElementById("visita-recorrencia-ate").value || null) : null,
       hora_inicio: document.getElementById("visita-hora-inicio").value || null,
       hora_fim: document.getElementById("visita-hora-fim").value || null,
       local: document.getElementById("visita-local").value.trim(),
