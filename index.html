@@ -1319,6 +1319,9 @@ function irParaPagina(id) {
 
   conteudo.innerHTML = "";
   conteudo.appendChild(tpl.content.cloneNode(true));
+  // O CSS define .pagina{display:none} e .pagina.ativa{display:block}.
+  // Sem esta linha a página fica renderizada no DOM porém invisível (tela em branco).
+  conteudo.querySelectorAll(".pagina").forEach(function (secao) { secao.classList.add("ativa"); });
   document.querySelectorAll(".menu-item").forEach(m => m.classList.toggle("ativo", m.dataset.pagina === id));
   const titulos = { dashboard: "Painel geral", tarefas: "Tarefas", solicitacoes: "Solicitações", categorias: "Categorias", agenda: "Agenda de visitas", clientes: "Clientes" };
   document.getElementById("topbar-sub").textContent = titulos[id] || "";
