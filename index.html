@@ -1300,6 +1300,7 @@ function montarMenu() {
 }
 
 function irParaPagina(id) {
+  fecharMenu(); // garante que o overlay do menu nunca fique cobrindo a nova página
   const conteudo = document.getElementById("conteudo");
   const tpl = document.getElementById(`tpl-${id}`);
 
@@ -2430,6 +2431,31 @@ function gerarRelatorioDiagnostico() {
   window.__errosCapturados.forEach(function (e) {
     relatorio.push("  - [" + e.hora + "] (" + e.tipo + ") " + e.mensagem);
   });
+
+  // Verificação crucial: o que está VISUALMENTE no centro da área de conteúdo?
+  // Isso revela se algum elemento (overlay, modal, etc.) está cobrindo o conteúdo real.
+  if (conteudoEl) {
+    const rect = conteudoEl.getBoundingClientRect();
+    const centroX = rect.left + rect.width / 2;
+    const centroY = rect.top + 150; // um pouco abaixo do topo do conteúdo
+    const elementoNoTopo = document.elementFromPoint(centroX, centroY);
+    relatorio.push("");
+    relatorio.push("Posição de #conteudo na tela: top=" + Math.round(rect.top) + " left=" + Math.round(rect.left) + " width=" + Math.round(rect.width) + " height=" + Math.round(rect.height));
+    relatorio.push("Elemento realmente visível nesse ponto da tela: " + (elementoNoTopo ? (elementoNoTopo.tagName + (elementoNoTopo.id ? "#" + elementoNoTopo.id : "") + (elementoNoTopo.className ? "." + String(elementoNoTopo.className).replace(/\s+/g, ".") : "")) : "nenhum"));
+
+    // Checa overlays conhecidos que poderiam estar cobrindo a tela
+    ["overlay-menu", "modal-tarefa", "modal-cliente", "modal-categoria", "modal-solicitacao", "modal-visita", "modal-detalhes-tarefa"].forEach(function (idEl) {
+      const el = document.getElementById(idEl);
+      if (el) {
+        const estilo = window.getComputedStyle(el);
+        if (estilo.display !== "none") {
+          relatorio.push("⚠️ ATENÇÃO: #" + idEl + " estava com display:" + estilo.display + " (cobrindo a tela) — CORRIGIDO AUTOMATICAMENTE.");
+          el.style.display = "none"; // autocorreção: fecha o overlay/modal travado na hora
+        }
+      }
+    });
+  }
+
   relatorio.push("");
   relatorio.push("Primeiros 500 caracteres do HTML em #conteudo:");
   relatorio.push(conteudoEl ? (conteudoEl.innerHTML.slice(0, 500) || "(completamente vazio)") : "elemento #conteudo não existe");
