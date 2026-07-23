@@ -568,8 +568,15 @@ select.select-status{
   border-radius:3px;padding:1px 4px;font-size:9.5px;line-height:1.3;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--carvao-900);
 }
-.calendario-dia.hoje .evento-mini{background:rgba(255,255,255,0.55);}
 .evento-mini .evento-hora{font-weight:700;color:var(--laranja-dark);margin-right:3px;}
+/* Cor por status: laranja=agendada, verde=realizada, vermelho=cancelada */
+.evento-mini.status-realizada{background:rgba(47,158,88,0.16);border-left-color:var(--verde);}
+.evento-mini.status-realizada .evento-hora{color:var(--verde);}
+.evento-mini.status-cancelada{background:rgba(212,72,63,0.14);border-left-color:var(--vermelho);}
+.evento-mini.status-cancelada .evento-hora{color:var(--vermelho);}
+.calendario-dia.hoje .evento-mini{background:rgba(255,255,255,0.55);}
+.calendario-dia.hoje .evento-mini.status-realizada{background:rgba(47,158,88,0.22);}
+.calendario-dia.hoje .evento-mini.status-cancelada{background:rgba(212,72,63,0.2);}
 .evento-mais{font-size:9px;color:var(--texto-suave);font-weight:700;padding-left:2px;}
 .legenda-empresa{
   display:flex;align-items:center;gap:6px;font-size:12px;color:var(--texto-suave);margin-top:8px;
@@ -714,7 +721,6 @@ select.select-status{
           <option value="">Todos os status</option>
           <option value="aberta">Aberta</option>
           <option value="em_andamento">Em andamento</option>
-          <option value="concluida">Concluída</option>
         </select>
         <select id="filtro-tarefas-empresa" style="display:none"><option value="">Todas as empresas</option></select>
         <select id="filtro-tarefas-categoria"><option value="">Todas as categorias</option></select>
@@ -736,6 +742,37 @@ select.select-status{
         </table>
       </div>
       <div class="vazio" id="tarefas-vazio" style="display:none">Nenhum projeto encontrado.</div>
+    </div>
+  </section>
+</template>
+
+<template id="tpl-concluidos">
+  <section class="pagina" id="pagina-concluidos">
+    <div class="page-header">
+      <div>
+        <h1>Projetos concluídos</h1>
+        <p>Histórico de projetos finalizados — reverta se algum foi concluído por engano</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-titulo">
+        Lista de concluídos
+      </div>
+      <div class="filtros" style="margin-bottom:14px">
+        <select id="filtro-concluidos-empresa" style="display:none"><option value="">Todas as empresas</option></select>
+        <select id="filtro-concluidos-categoria"><option value="">Todas as categorias</option></select>
+        <input type="date" id="filtro-concluidos-de" title="Concluído de">
+        <input type="date" id="filtro-concluidos-ate" title="Concluído até">
+      </div>
+      <div class="tabela-scroll">
+        <table class="tabela" id="tabela-concluidos">
+          <thead><tr>
+            <th>Projeto</th><th id="th-concluidos-cliente">Cliente</th><th>Categoria</th><th>Colaborador</th><th>Concluído em</th><th>Lead time</th><th>Tempo total</th><th></th>
+          </tr></thead>
+          <tbody id="tabela-concluidos-corpo"></tbody>
+        </table>
+      </div>
+      <div class="vazio" id="concluidos-vazio" style="display:none">Nenhum projeto concluído ainda.</div>
     </div>
   </section>
 </template>
@@ -1344,6 +1381,7 @@ function montarMenu() {
   const itens = [
     { id: "dashboard", label: "Painel geral", icone: "📊" },
     { id: "tarefas", label: "Projetos", icone: "✅" },
+    { id: "concluidos", label: "Concluídos", icone: "🏁" },
     { id: "agenda", label: "Agenda de visitas", icone: "🗓️" },
   ];
   if (usuarioAtual.tipo === "admin") {
@@ -1372,6 +1410,7 @@ function atualizarPaginaAtual() {
   const mapa = {
     "pagina-dashboard": renderizarDashboard,
     "pagina-tarefas": renderizarTabelaTarefas,
+    "pagina-concluidos": renderizarTabelaConcluidos,
     "pagina-solicitacoes": renderizarSolicitacoes,
     "pagina-categorias": renderizarTabelaCategorias,
     "pagina-agenda": renderizarAgendaPagina,
@@ -1406,7 +1445,7 @@ function irParaPagina(id) {
   // Sem esta linha a página fica renderizada no DOM porém invisível (tela em branco).
   conteudo.querySelectorAll(".pagina").forEach(function (secao) { secao.classList.add("ativa"); });
   document.querySelectorAll(".menu-item").forEach(m => m.classList.toggle("ativo", m.dataset.pagina === id));
-  const titulos = { dashboard: "Painel geral", tarefas: "Projetos", solicitacoes: "Solicitações", categorias: "Categorias", agenda: "Agenda de visitas", clientes: "Clientes" };
+  const titulos = { dashboard: "Painel geral", tarefas: "Projetos", concluidos: "Projetos concluídos", solicitacoes: "Solicitações", categorias: "Categorias", agenda: "Agenda de visitas", clientes: "Clientes" };
   document.getElementById("topbar-sub").textContent = titulos[id] || "";
 
   // Cada etapa roda isoladamente: um erro em uma delas não impede as outras,
@@ -1417,6 +1456,7 @@ function irParaPagina(id) {
     ["conteúdo da página", () => {
       if (id === "dashboard") renderizarDashboard();
       if (id === "tarefas") renderizarTabelaTarefas();
+      if (id === "concluidos") renderizarTabelaConcluidos();
       if (id === "solicitacoes") renderizarSolicitacoes();
       if (id === "categorias") renderizarTabelaCategorias();
       if (id === "agenda") renderizarAgendaPagina();
@@ -1456,6 +1496,11 @@ function ajustarVisibilidadePorPerfil(id) {
       popularFiltroEmpresas();
       popularFiltroCategoriasTarefas();
     }
+    if (id === "concluidos") {
+      document.getElementById("filtro-concluidos-empresa").style.display = "inline-block";
+      popularFiltroEmpresas();
+      popularFiltroCategoriasConcluidos();
+    }
     if (id === "agenda") {
       document.getElementById("card-filtro-empresa-agenda").style.display = "block";
       popularFiltroEmpresas();
@@ -1465,6 +1510,10 @@ function ajustarVisibilidadePorPerfil(id) {
     if (id === "tarefas") {
       document.getElementById("th-cliente").style.display = "none";
       popularFiltroCategoriasTarefas();
+    }
+    if (id === "concluidos") {
+      document.getElementById("th-concluidos-cliente").style.display = "none";
+      popularFiltroCategoriasConcluidos();
     }
   }
 }
@@ -1549,9 +1598,11 @@ function popularFiltroEmpresas() {
   const f1 = document.getElementById("filtro-empresa");
   const f2 = document.getElementById("filtro-tarefas-empresa");
   const f3 = document.getElementById("filtro-agenda-empresa");
+  const f4 = document.getElementById("filtro-concluidos-empresa");
   if (f1) f1.innerHTML = opts;
   if (f2) f2.innerHTML = opts;
   if (f3) f3.innerHTML = opts;
+  if (f4) f4.innerHTML = opts;
 }
 
 function popularFiltroCategoriasDash() {
@@ -1561,6 +1612,12 @@ function popularFiltroCategoriasDash() {
 }
 function popularFiltroCategoriasTarefas() {
   const el = document.getElementById("filtro-tarefas-categoria");
+  if (!el) return;
+  el.innerHTML = `<option value="">Todas as categorias</option>` + todasCategorias.map(c => `<option value="${c.id}">${c.nome}</option>`).join("");
+}
+
+function popularFiltroCategoriasConcluidos() {
+  const el = document.getElementById("filtro-concluidos-categoria");
   if (!el) return;
   el.innerHTML = `<option value="">Todas as categorias</option>` + todasCategorias.map(c => `<option value="${c.id}">${c.nome}</option>`).join("");
 }
@@ -1616,6 +1673,12 @@ function ligarEventosPagina(id) {
     ["filtro-tarefas-status","filtro-tarefas-empresa","filtro-tarefas-categoria","filtro-tarefas-prioridade","filtro-tarefas-de","filtro-tarefas-ate"].forEach(elId => {
       const el = document.getElementById(elId);
       if (el) el.addEventListener("change", renderizarTabelaTarefas);
+    });
+  }
+  if (id === "concluidos") {
+    ["filtro-concluidos-empresa","filtro-concluidos-categoria","filtro-concluidos-de","filtro-concluidos-ate"].forEach(elId => {
+      const el = document.getElementById(elId);
+      if (el) el.addEventListener("change", renderizarTabelaConcluidos);
     });
   }
   if (id === "categorias") {
@@ -1906,7 +1969,7 @@ function tarefasFiltradasLista() {
   const deF = document.getElementById("filtro-tarefas-de")?.value;
   const ateF = document.getElementById("filtro-tarefas-ate")?.value;
 
-  let lista = todasTarefas.filter(t => usuarioAtual.tipo === "admin" ? t.aprovada !== false : true);
+  let lista = todasTarefas.filter(t => (usuarioAtual.tipo === "admin" ? t.aprovada !== false : true) && t.status !== "concluida");
   if (statusF) lista = lista.filter(t => t.status === statusF);
   if (empresaF) lista = lista.filter(t => { const c = getClienteById(t.cliente_id); return c && c.empresa === empresaF; });
   if (categoriaF) lista = lista.filter(t => t.categoria_id === categoriaF);
@@ -1972,6 +2035,66 @@ function renderizarTabelaTarefas() {
   }).join("");
 }
 
+/* ================= TABELA DE PROJETOS CONCLUÍDOS ================= */
+function projetosConcluidosFiltrados() {
+  const empresaF = document.getElementById("filtro-concluidos-empresa")?.value;
+  const categoriaF = document.getElementById("filtro-concluidos-categoria")?.value;
+  const deF = document.getElementById("filtro-concluidos-de")?.value;
+  const ateF = document.getElementById("filtro-concluidos-ate")?.value;
+
+  let lista = todasTarefas.filter(t => (usuarioAtual.tipo === "admin" ? t.aprovada !== false : true) && t.status === "concluida");
+  if (empresaF) lista = lista.filter(t => { const c = getClienteById(t.cliente_id); return c && c.empresa === empresaF; });
+  if (categoriaF) lista = lista.filter(t => t.categoria_id === categoriaF);
+  if (deF) lista = lista.filter(t => t.data_conclusao && t.data_conclusao >= deF);
+  if (ateF) lista = lista.filter(t => t.data_conclusao && t.data_conclusao <= ateF);
+  // Mais recentemente concluídos primeiro
+  lista.sort((a,b) => (b.data_conclusao || "").localeCompare(a.data_conclusao || ""));
+  return lista;
+}
+
+function renderizarTabelaConcluidos() {
+  const corpo = document.getElementById("tabela-concluidos-corpo");
+  if (!corpo) return;
+  const lista = projetosConcluidosFiltrados();
+  document.getElementById("concluidos-vazio").style.display = lista.length ? "none" : "block";
+  corpo.innerHTML = lista.map(t => {
+    const cli = getClienteById(t.cliente_id);
+    const cat = getCategoriaById(t.categoria_id);
+    const concluidoEm = t.data_conclusao ? new Date(t.data_conclusao + "T00:00:00").toLocaleDateString("pt-BR") : "—";
+    const leadTime = (t.lead_time_dias || t.lead_time_dias === 0) ? `${t.lead_time_dias} dia${t.lead_time_dias === 1 ? "" : "s"}` : "—";
+    return `
+      <tr>
+        <td><strong>${t.titulo}</strong>${t.descricao ? `<br><span style="color:var(--texto-suave);font-size:12px">${t.descricao}</span>` : ""}</td>
+        ${usuarioAtual.tipo === "admin" ? `<td>${cli ? (cli.empresa || cli.nome) : "—"}</td>` : ""}
+        <td>${cat ? `<span class="chip-categoria" style="background:${cat.cor}">${cat.nome}</span>` : "—"}</td>
+        <td>${t.colaborador || "—"}</td>
+        <td>${concluidoEm}</td>
+        <td>${leadTime}</td>
+        <td>${formatarTempo(tempoTotalTarefa(t))}</td>
+        <td>
+          <div class="acoes-linha">
+            <button class="btn-icone" onclick="verDetalhesTarefa('${t.id}')" title="Ver objetivo, indicador e abrangência">ℹ️</button>
+            ${usuarioAtual.tipo === "admin" ? `
+            <button class="btn-icone" onclick="reverterConclusao('${t.id}')" title="Reverter para Em andamento">↩️</button>
+            <button class="btn-icone perigo" onclick="excluirTarefa('${t.id}')" title="Excluir">🗑</button>` : ""}
+          </div>
+        </td>
+      </tr>`;
+  }).join("");
+}
+
+window.reverterConclusao = async function(id) {
+  const t = todasTarefas.find(t => t.id === id);
+  if (!t) return;
+  if (!confirm("Reverter este projeto para \"Em andamento\"? Ele volta a aparecer na lista de projetos ativos.")) return;
+  try {
+    const body = { status: "em_andamento", data_conclusao: null, lead_time_dias: null };
+    await sb(`cap_tarefas?id=eq.${id}`, { method: "PATCH", body: JSON.stringify(body) });
+    Object.assign(t, body);
+    irParaPagina("tarefas"); // leva de volta para onde o projeto reaparece, já ativo
+  } catch (err) { alert("Erro ao reverter o projeto: " + err.message); }
+};
+
 /* ---- Cronômetro (item 3) ---- */
 window.alternarCronometro = async function(id) {
   const t = todasTarefas.find(t => t.id === id);
@@ -2026,7 +2149,13 @@ async function alterarStatus(id, novoStatus) {
     }
     await sb(`cap_tarefas?id=eq.${id}`, { method: "PATCH", body: JSON.stringify(body) });
     Object.assign(t, body);
-    atualizarPaginaAtual();
+    if (novoStatus === "concluida") {
+      // O projeto sai da lista de ativos e o usuário é levado para a tela
+      // de projetos concluídos, onde ele acabou de "aparecer".
+      irParaPagina("concluidos");
+    } else {
+      atualizarPaginaAtual();
+    }
   } catch (err) { alert("Erro ao atualizar status: " + err.message); }
 }
 
@@ -2410,7 +2539,7 @@ function renderizarCalendario() {
       const nome = usuarioAtual.tipo === "admin" && cli ? (cli.empresa || cli.nome) : (v.titulo || "Visita");
       const hora = v.hora_inicio ? v.hora_inicio.slice(0, 5) : "";
       const tooltip = `${v.titulo || ""}${cli ? " — " + (cli.empresa || cli.nome) : ""}${hora ? " às " + hora : ""}`.trim();
-      return `<div class="evento-mini" title="${tooltip.replace(/"/g, "&quot;")}">${hora ? `<span class="evento-hora">${hora}</span>` : ""}${nome}</div>`;
+      return `<div class="evento-mini status-${v.status || 'agendada'}" title="${tooltip.replace(/"/g, "&quot;")}">${hora ? `<span class="evento-hora">${hora}</span>` : ""}${nome}</div>`;
     }).join("");
     const restante = eventos.length - maxVisiveis;
     html += `<div class="calendario-dia ${ehHoje ? 'hoje':''}">
@@ -2446,6 +2575,7 @@ function renderizarListaVisitas() {
         ${usuarioAtual.tipo === "admin" ? `
         <div class="acoes-linha">
           ${!v.recorrente && v.status !== 'realizada' ? `<button class="btn-icone sucesso" onclick="marcarVisitaRealizada('${v.id}')" title="Marcar como concluída">✓</button>` : ""}
+          ${!v.recorrente && v.status === 'realizada' ? `<button class="btn-icone" onclick="reverterVisita('${v.id}')" title="Reverter para Agendada">↩️</button>` : ""}
           <button class="btn-icone" onclick="abrirEdicaoVisita('${v.id}')" title="Editar">✎</button>
           <button class="btn-icone perigo" onclick="excluirVisita('${v.id}')" title="Excluir">🗑</button>
         </div>` : ""}
@@ -2543,6 +2673,17 @@ window.marcarVisitaRealizada = async function(id) {
     if (idx !== -1) todasVisitas[idx] = atualizado[0];
     renderizarAgendaPagina();
   } catch (err) { alert("Erro ao marcar a visita como concluída: " + err.message); }
+};
+
+window.reverterVisita = async function(id) {
+  const v = todasVisitas.find(v => v.id === id);
+  if (!v) return;
+  try {
+    const atualizado = await sb(`cap_visitas?id=eq.${id}`, { method: "PATCH", body: JSON.stringify({ status: "agendada" }) });
+    const idx = todasVisitas.findIndex(v => v.id === id);
+    if (idx !== -1) todasVisitas[idx] = atualizado[0];
+    renderizarAgendaPagina();
+  } catch (err) { alert("Erro ao reverter a visita: " + err.message); }
 };
 
 window.excluirVisita = async function(id) {
