@@ -1122,6 +1122,7 @@ let todosClientes = [];
 let todasTarefas = [];
 let todasCategorias = [];
 let todasVisitas = [];
+let avisosCarregamento = [];
 let graficoAnual, graficoStatus;
 let cronometrosAtivos = {}; // {tarefaId: intervalId}
 let calendarioMesAtual = new Date().getMonth();
@@ -1359,8 +1360,6 @@ async function carregarComSeguranca(promessa, valorPadrao, nomeRecurso) {
     return valorPadrao;
   }
 }
-
-let avisosCarregamento = [];
 
 async function carregarDados() {
   avisosCarregamento = [];
