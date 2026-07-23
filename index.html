@@ -500,7 +500,14 @@ select.select-status{
       </div>
       <div class="campo">
         <label>Senha</label>
-        <input type="password" id="login-senha" required placeholder="••••••••">
+        <div style="position:relative;">
+          <input type="password" id="login-senha" required placeholder="••••••••" style="padding-right:44px;">
+          <button type="button" id="btn-toggle-senha" title="Mostrar senha" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;color:var(--texto-suave);padding:6px;line-height:1;">👁️</button>
+        </div>
+      </div>
+      <div class="campo" style="display:flex;align-items:center;gap:8px;margin-bottom:20px;">
+        <input type="checkbox" id="login-lembrar" style="width:auto;accent-color:var(--laranja);">
+        <label for="login-lembrar" style="margin:0;text-transform:none;font-size:13.5px;font-weight:500;color:var(--texto);letter-spacing:normal;cursor:pointer;">Lembrar senha neste dispositivo</label>
       </div>
       <button type="submit" class="btn">Entrar</button>
     </form>
@@ -732,6 +739,26 @@ select.select-status{
       <label>Descrição</label>
       <input type="text" id="tarefa-descricao" placeholder="Detalhes (opcional)">
     </div>
+    <div class="campo">
+      <label>Objetivo</label>
+      <textarea id="tarefa-objetivo" rows="2" placeholder="Por que essa tarefa está sendo feita?"></textarea>
+    </div>
+    <div class="campo">
+      <label>Indicador</label>
+      <textarea id="tarefa-indicador" rows="2" placeholder="Como será mensurado? Em qual relatório aparece?"></textarea>
+    </div>
+    <div class="campo">
+      <label>Abrangência</label>
+      <select id="tarefa-abrangencia">
+        <option value="">Não definida</option>
+        <option value="setor">Setor</option>
+        <option value="empresa_toda">Empresa toda</option>
+      </select>
+    </div>
+    <div class="campo" id="campo-tarefa-setor" style="display:none">
+      <label>Qual setor</label>
+      <input type="text" id="tarefa-setor" placeholder="Ex: Financeiro, RH, Comercial...">
+    </div>
     <div class="campo" id="campo-tarefa-categoria">
       <label>Categoria</label>
       <select id="tarefa-categoria"><option value="">Sem categoria</option></select>
@@ -858,6 +885,28 @@ select.select-status{
   </div>
 </div>
 
+<!-- MODAL: Detalhes da tarefa (objetivo / indicador / abrangência) -->
+<div class="modal-overlay" id="modal-detalhes-tarefa">
+  <div class="modal">
+    <h3 id="detalhes-tarefa-titulo">Detalhes da tarefa</h3>
+    <div class="campo">
+      <label>Objetivo</label>
+      <p id="detalhes-objetivo" style="font-size:14px;color:var(--texto);line-height:1.5;">—</p>
+    </div>
+    <div class="campo">
+      <label>Indicador</label>
+      <p id="detalhes-indicador" style="font-size:14px;color:var(--texto);line-height:1.5;">—</p>
+    </div>
+    <div class="campo">
+      <label>Abrangência</label>
+      <p id="detalhes-abrangencia" style="font-size:14px;color:var(--texto);line-height:1.5;">—</p>
+    </div>
+    <div class="modal-acoes">
+      <button class="btn btn-outline" id="btn-fechar-detalhes-tarefa">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
 // Fallback: se o CDN principal falhar (bloqueio de rede, adblock, etc.),
@@ -915,10 +964,34 @@ const MESES_LONGO = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julh
 const DIAS_SEMANA = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
 
 /* ================= LOGIN ================= */
+
+// Mostrar/ocultar senha
+document.getElementById("btn-toggle-senha").addEventListener("click", (e) => {
+  const campo = document.getElementById("login-senha");
+  const mostrando = campo.type === "text";
+  campo.type = mostrando ? "password" : "text";
+  e.currentTarget.textContent = mostrando ? "👁️" : "🙈";
+  e.currentTarget.title = mostrando ? "Mostrar senha" : "Ocultar senha";
+});
+
+// Preencher automaticamente se houver credenciais lembradas neste dispositivo
+(function preencherCredenciaisLembradas() {
+  const lembrado = localStorage.getItem("cap_credenciais_lembradas");
+  if (lembrado) {
+    try {
+      const { email, senha } = JSON.parse(lembrado);
+      document.getElementById("login-email").value = email || "";
+      document.getElementById("login-senha").value = senha || "";
+      document.getElementById("login-lembrar").checked = true;
+    } catch (e) { localStorage.removeItem("cap_credenciais_lembradas"); }
+  }
+})();
+
 document.getElementById("form-login").addEventListener("submit", async (e) => {
   e.preventDefault();
   const email = document.getElementById("login-email").value.trim().toLowerCase();
   const senha = document.getElementById("login-senha").value;
+  const lembrar = document.getElementById("login-lembrar").checked;
   const erroEl = document.getElementById("login-erro");
   erroEl.style.display = "none";
 
@@ -936,6 +1009,13 @@ document.getElementById("form-login").addEventListener("submit", async (e) => {
     }
     usuarioAtual = users[0];
     localStorage.setItem("cap_sessao", JSON.stringify(usuarioAtual));
+
+    if (lembrar) {
+      localStorage.setItem("cap_credenciais_lembradas", JSON.stringify({ email, senha }));
+    } else {
+      localStorage.removeItem("cap_credenciais_lembradas");
+    }
+
     garantirChartJs(iniciarApp);
   } catch (err) {
     erroEl.textContent = "Não foi possível conectar. Verifique sua internet e tente novamente.";
@@ -959,6 +1039,7 @@ document.getElementById("btn-sair").addEventListener("click", () => {
   }
 })();
 
+
 /* ================= INICIAR APP ================= */
 async function iniciarApp() {
   document.getElementById("tela-login").style.display = "none";
@@ -967,14 +1048,22 @@ async function iniciarApp() {
   document.getElementById("sidebar-user").textContent = usuarioAtual.tipo === "admin" ? "Administrador" : (usuarioAtual.empresa || usuarioAtual.nome);
 
   montarMenu();
-
-  try {
-    await carregarDados();
-  } catch (err) {
-    alert("Erro ao carregar dados do sistema: " + err.message);
-    console.error(err);
-  }
+  await carregarDados();
   irParaPagina("dashboard");
+
+  if (avisosCarregamento.length > 0 && usuarioAtual.tipo === "admin") {
+    mostrarBannerAviso(`Algumas informações (${avisosCarregamento.join(", ")}) não puderam ser carregadas. Se você acabou de atualizar o sistema, rode o script de migração mais recente no Supabase.`);
+  }
+}
+
+function mostrarBannerAviso(mensagem) {
+  const existente = document.getElementById("banner-aviso");
+  if (existente) existente.remove();
+  const banner = document.createElement("div");
+  banner.id = "banner-aviso";
+  banner.style.cssText = "position:sticky;top:0;z-index:60;background:#fdf3d4;color:#7a5b00;padding:10px 16px;font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:10px;";
+  banner.innerHTML = `<span>⚠️ ${mensagem}</span><button style="border:none;background:transparent;font-size:16px;cursor:pointer;color:#7a5b00;" onclick="this.parentElement.remove()">✕</button>`;
+  document.getElementById("app").insertBefore(banner, document.getElementById("app").children[1]);
 }
 
 function iniciais(nome) {
@@ -1016,17 +1105,22 @@ function irParaPagina(id) {
   const titulos = { dashboard: "Painel geral", tarefas: "Tarefas", solicitacoes: "Solicitações", categorias: "Categorias", agenda: "Agenda de visitas", clientes: "Clientes" };
   document.getElementById("topbar-sub").textContent = titulos[id] || "";
 
-  ajustarVisibilidadePorPerfil(id);
-  ligarEventosPagina(id);
+  try {
+    ajustarVisibilidadePorPerfil(id);
+    ligarEventosPagina(id);
 
-  if (id === "dashboard") renderizarDashboard();
-  if (id === "tarefas") renderizarTabelaTarefas();
-  if (id === "solicitacoes") renderizarSolicitacoes();
-  if (id === "categorias") renderizarTabelaCategorias();
-  if (id === "agenda") renderizarAgendaPagina();
-  if (id === "clientes") renderizarTabelaClientes();
+    if (id === "dashboard") renderizarDashboard();
+    if (id === "tarefas") renderizarTabelaTarefas();
+    if (id === "solicitacoes") renderizarSolicitacoes();
+    if (id === "categorias") renderizarTabelaCategorias();
+    if (id === "agenda") renderizarAgendaPagina();
+    if (id === "clientes") renderizarTabelaClientes();
 
-  atualizarContadorSolicitacoes();
+    atualizarContadorSolicitacoes();
+  } catch (err) {
+    console.error(`Erro ao renderizar a página "${id}":`, err);
+    conteudo.insertAdjacentHTML("beforeend", `<div class="card"><div class="vazio">Não foi possível carregar completamente esta página. Detalhe técnico: ${err.message}</div></div>`);
+  }
 }
 
 function ajustarVisibilidadePorPerfil(id) {
@@ -1072,16 +1166,37 @@ function fecharMenu() {
 }
 
 /* ================= CARREGAR DADOS ================= */
+// Cada recurso é buscado de forma independente: se uma tabela ainda não
+// existir no banco (ex: migração ainda não rodada), isso não impede o
+// carregamento do restante do sistema — a tela nunca fica em branco.
+async function carregarComSeguranca(promessa, valorPadrao, nomeRecurso) {
+  try {
+    return await promessa;
+  } catch (err) {
+    console.error(`Falha ao carregar "${nomeRecurso}":`, err.message);
+    avisosCarregamento.push(nomeRecurso);
+    return valorPadrao;
+  }
+}
+
+let avisosCarregamento = [];
+
 async function carregarDados() {
-  todasCategorias = await sb(`cap_categorias?select=*&order=nome.asc`);
+  avisosCarregamento = [];
+  todasCategorias = await carregarComSeguranca(sb(`cap_categorias?select=*&order=nome.asc`), [], "categorias");
+
   if (usuarioAtual.tipo === "admin") {
-    todosClientes = await sb(`cap_usuarios?tipo=eq.cliente&select=*&order=nome.asc`);
-    todasTarefas = await sb(`cap_tarefas?select=*&order=data_prevista.asc`);
-    todasVisitas = await sb(`cap_visitas?select=*&order=data_visita.asc`);
+    todosClientes = await carregarComSeguranca(sb(`cap_usuarios?tipo=eq.cliente&select=*&order=nome.asc`), [], "clientes");
+    todasTarefas = await carregarComSeguranca(sb(`cap_tarefas?select=*&order=data_prevista.asc`), [], "tarefas");
+    todasVisitas = await carregarComSeguranca(sb(`cap_visitas?select=*&order=data_visita.asc`), [], "visitas");
   } else {
     todosClientes = [];
-    todasTarefas = await sb(`cap_tarefas?cliente_id=eq.${usuarioAtual.id}&aprovada=eq.true&select=*&order=data_prevista.asc`);
-    todasVisitas = await sb(`cap_visitas?cliente_id=eq.${usuarioAtual.id}&select=*&order=data_visita.asc`);
+    todasTarefas = await carregarComSeguranca(sb(`cap_tarefas?cliente_id=eq.${usuarioAtual.id}&aprovada=eq.true&select=*&order=data_prevista.asc`), [], "tarefas");
+    todasVisitas = await carregarComSeguranca(sb(`cap_visitas?cliente_id=eq.${usuarioAtual.id}&select=*&order=data_visita.asc`), [], "visitas");
+  }
+
+  if (avisosCarregamento.length > 0) {
+    console.warn("Alguns dados não puderam ser carregados (provavelmente a migração do banco ainda não foi executada):", avisosCarregamento.join(", "));
   }
 }
 
@@ -1371,11 +1486,12 @@ function renderizarTabelaTarefas() {
         </td>
         <td><span class="badge-prioridade ${t.prioridade}">${labelPrioridade(t.prioridade)}</span></td>
         <td>
-          ${usuarioAtual.tipo === "admin" ? `
           <div class="acoes-linha">
+            <button class="btn-icone" onclick="verDetalhesTarefa('${t.id}')" title="Ver objetivo, indicador e abrangência">ℹ️</button>
+            ${usuarioAtual.tipo === "admin" ? `
             <button class="btn-icone" onclick="abrirEdicaoTarefa('${t.id}')" title="Editar">✎</button>
-            <button class="btn-icone perigo" onclick="excluirTarefa('${t.id}')" title="Excluir">🗑</button>
-          </div>` : ""}
+            <button class="btn-icone perigo" onclick="excluirTarefa('${t.id}')" title="Excluir">🗑</button>` : ""}
+          </div>
         </td>
       </tr>`;
   }).join("");
@@ -1468,6 +1584,11 @@ function abrirNovaTarefa() {
   document.getElementById("tarefa-id").value = "";
   document.getElementById("tarefa-titulo").value = "";
   document.getElementById("tarefa-descricao").value = "";
+  document.getElementById("tarefa-objetivo").value = "";
+  document.getElementById("tarefa-indicador").value = "";
+  document.getElementById("tarefa-abrangencia").value = "";
+  document.getElementById("tarefa-setor").value = "";
+  document.getElementById("campo-tarefa-setor").style.display = "none";
   document.getElementById("tarefa-categoria").value = "";
   document.getElementById("tarefa-colaborador").value = "";
   document.getElementById("tarefa-data-inicio").value = "";
@@ -1488,6 +1609,11 @@ window.abrirEdicaoTarefa = function(id) {
   document.getElementById("tarefa-cliente").value = t.cliente_id;
   document.getElementById("tarefa-titulo").value = t.titulo;
   document.getElementById("tarefa-descricao").value = t.descricao || "";
+  document.getElementById("tarefa-objetivo").value = t.objetivo || "";
+  document.getElementById("tarefa-indicador").value = t.indicador || "";
+  document.getElementById("tarefa-abrangencia").value = t.abrangencia || "";
+  document.getElementById("tarefa-setor").value = t.setor || "";
+  document.getElementById("campo-tarefa-setor").style.display = t.abrangencia === "setor" ? "block" : "none";
   document.getElementById("tarefa-categoria").value = t.categoria_id || "";
   document.getElementById("tarefa-colaborador").value = t.colaborador || "";
   document.getElementById("tarefa-data-inicio").value = t.data_inicio || "";
@@ -1497,6 +1623,26 @@ window.abrirEdicaoTarefa = function(id) {
   document.getElementById("campo-tarefa-cliente").style.display = "block";
   document.getElementById("modal-tarefa").style.display = "flex";
 };
+
+document.getElementById("tarefa-abrangencia").addEventListener("change", (e) => {
+  document.getElementById("campo-tarefa-setor").style.display = e.target.value === "setor" ? "block" : "none";
+});
+
+window.verDetalhesTarefa = function(id) {
+  const t = todasTarefas.find(t => t.id === id);
+  if (!t) return;
+  document.getElementById("detalhes-tarefa-titulo").textContent = t.titulo;
+  document.getElementById("detalhes-objetivo").textContent = t.objetivo || "Não informado.";
+  document.getElementById("detalhes-indicador").textContent = t.indicador || "Não informado.";
+  let abrangenciaTexto = "Não definida.";
+  if (t.abrangencia === "setor") abrangenciaTexto = `Setor${t.setor ? ": " + t.setor : ""}`;
+  if (t.abrangencia === "empresa_toda") abrangenciaTexto = "Empresa toda";
+  document.getElementById("detalhes-abrangencia").textContent = abrangenciaTexto;
+  document.getElementById("modal-detalhes-tarefa").style.display = "flex";
+};
+document.getElementById("btn-fechar-detalhes-tarefa").addEventListener("click", () => {
+  document.getElementById("modal-detalhes-tarefa").style.display = "none";
+});
 
 document.getElementById("btn-salvar-tarefa").addEventListener("click", async () => {
   const id = document.getElementById("tarefa-id").value;
@@ -1513,6 +1659,10 @@ document.getElementById("btn-salvar-tarefa").addEventListener("click", async () 
     cliente_id: clienteId,
     titulo,
     descricao: document.getElementById("tarefa-descricao").value.trim(),
+    objetivo: document.getElementById("tarefa-objetivo").value.trim(),
+    indicador: document.getElementById("tarefa-indicador").value.trim(),
+    abrangencia: document.getElementById("tarefa-abrangencia").value || null,
+    setor: document.getElementById("tarefa-abrangencia").value === "setor" ? document.getElementById("tarefa-setor").value.trim() : "",
     categoria_id: document.getElementById("tarefa-categoria").value || null,
     colaborador: document.getElementById("tarefa-colaborador").value.trim(),
     data_inicio: dataInicio,
