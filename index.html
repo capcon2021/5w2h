@@ -569,7 +569,10 @@ select.select-status{
       <button class="hamburguer" id="btn-hamburguer"><span></span><span></span><span></span></button>
       <div class="topbar-titulo">CAP Consultoria<small id="topbar-sub">Painel de Tarefas</small></div>
     </div>
-    <button class="avatar-btn" id="avatar-btn">--</button>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <button id="btn-forcar-diagnostico" title="Ver diagnóstico do sistema" style="background:rgba(255,255,255,0.1);border:none;color:#fff;width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:14px;">🛠️</button>
+      <button class="avatar-btn" id="avatar-btn">--</button>
+    </div>
   </div>
 
   <div id="overlay-menu"></div>
@@ -1213,18 +1216,47 @@ document.getElementById("btn-sair").addEventListener("click", () => {
 
 /* ================= INICIAR APP ================= */
 async function iniciarApp() {
-  document.getElementById("tela-login").style.display = "none";
-  document.getElementById("app").style.display = "block";
-  document.getElementById("avatar-btn").textContent = iniciais(usuarioAtual.nome);
-  document.getElementById("sidebar-user").textContent = usuarioAtual.tipo === "admin" ? "Administrador" : (usuarioAtual.empresa || usuarioAtual.nome);
-
-  montarMenu();
-  await carregarDados();
-  irParaPagina("dashboard");
-
-  if (avisosCarregamento.length > 0 && usuarioAtual.tipo === "admin") {
-    mostrarBannerAviso(`Algumas informações (${avisosCarregamento.join(", ")}) não puderam ser carregadas. Se você acabou de atualizar o sistema, rode o script de migração mais recente no Supabase.`);
+  console.log("[iniciarApp] Início");
+  try {
+    document.getElementById("tela-login").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    document.getElementById("avatar-btn").textContent = iniciais(usuarioAtual.nome);
+    document.getElementById("sidebar-user").textContent = usuarioAtual.tipo === "admin" ? "Administrador" : (usuarioAtual.empresa || usuarioAtual.nome);
+    console.log("[iniciarApp] Cabeçalho e sidebar configurados");
+  } catch (err) {
+    console.error("[iniciarApp] Falha ao configurar cabeçalho/sidebar:", err);
   }
+
+  try {
+    montarMenu();
+    console.log("[iniciarApp] Menu montado");
+  } catch (err) {
+    console.error("[iniciarApp] Falha ao montar menu:", err);
+  }
+
+  try {
+    await carregarDados();
+    console.log("[iniciarApp] Dados carregados. Tarefas:", todasTarefas.length, "Clientes:", todosClientes.length);
+  } catch (err) {
+    console.error("[iniciarApp] Falha ao carregar dados:", err);
+  }
+
+  try {
+    irParaPagina("dashboard");
+    console.log("[iniciarApp] Dashboard renderizado");
+  } catch (err) {
+    console.error("[iniciarApp] Falha ao renderizar dashboard:", err);
+  }
+
+  try {
+    if (avisosCarregamento.length > 0 && usuarioAtual.tipo === "admin") {
+      mostrarBannerAviso(`Algumas informações (${avisosCarregamento.join(", ")}) não puderam ser carregadas. Se você acabou de atualizar o sistema, rode o script de migração mais recente no Supabase.`);
+    }
+  } catch (err) {
+    console.error("[iniciarApp] Falha ao mostrar banner de aviso:", err);
+  }
+
+  console.log("[iniciarApp] Fim");
 }
 
 function mostrarBannerAviso(mensagem) {
@@ -1316,6 +1348,11 @@ function irParaPagina(id) {
         <div style="font-size:12.5px;color:#8a3530;">Detalhe técnico (envie este texto ao suporte se persistir): ${err.message}</div>
       </div>`);
     }
+  }
+
+  // Checa imediatamente (sem esperar o intervalo) se esta página específica ficou vazia.
+  if (typeof verificarTelaVazia === "function") {
+    setTimeout(verificarTelaVazia, 500);
   }
 }
 
@@ -2363,61 +2400,78 @@ document.getElementById("btn-flutuante").addEventListener("click", () => {
    Roda periodicamente (não só uma vez) e verifica se a tela realmente
    mostra conteúdo. Se o app estiver "aberto" mas sem nada visível,
    mostra um relatório completo do estado interno para diagnóstico —
-   mesmo sem nenhum erro JS registrado. */
-function verificarTelaVazia() {
+   mesmo sem nenhum erro JS registrado. Também pode ser forçado a
+   qualquer momento pelo botão 🛠️ na barra superior. */
+function gerarRelatorioDiagnostico() {
   const telaLoginEl = document.getElementById("tela-login");
   const appEl = document.getElementById("app");
   const loginVisivel = telaLoginEl && window.getComputedStyle(telaLoginEl).display !== "none";
   const appVisivel = appEl && window.getComputedStyle(appEl).display !== "none";
   const conteudoEl = document.getElementById("conteudo");
-  // Considera "com conteúdo" qualquer sinal de renderização real:
-  // cards, indicadores, linhas de tabela, ou o próprio texto de "vazio" (que também é conteúdo válido).
-  const temAlgumConteudo = conteudoEl && (
-    conteudoEl.querySelectorAll(".card, .card-indicador, tr, .vazio, .solicitacao-card, .agenda-dia").length > 0
-  );
+  const paginaAtivaEl = document.querySelector(".pagina");
 
-  if (appVisivel && !temAlgumConteudo) {
-    const paginaAtivaEl = document.querySelector(".pagina");
-    const relatorio = [];
-    relatorio.push("=== DIAGNÓSTICO AUTOMÁTICO (tela sem conteúdo detectada) ===");
-    relatorio.push("Hora: " + new Date().toLocaleTimeString());
-    relatorio.push("Página atual: " + (paginaAtivaEl ? paginaAtivaEl.id : "nenhuma página carregada em #conteudo"));
-    relatorio.push("Login visível (real): " + loginVisivel);
-    relatorio.push("App visível (real): " + appVisivel);
-    relatorio.push("usuarioAtual definido: " + (typeof usuarioAtual !== "undefined" && usuarioAtual !== null));
-    relatorio.push("usuarioAtual.tipo: " + (typeof usuarioAtual !== "undefined" && usuarioAtual ? usuarioAtual.tipo : "N/A"));
-    relatorio.push("Tamanho do HTML em #conteudo: " + (conteudoEl ? conteudoEl.innerHTML.length : "elemento não existe"));
-    relatorio.push("todasTarefas: " + (typeof todasTarefas !== "undefined" ? todasTarefas.length + " item(ns)" : "não definido"));
-    relatorio.push("todosClientes: " + (typeof todosClientes !== "undefined" ? todosClientes.length + " item(ns)" : "não definido"));
-    relatorio.push("todasCategorias: " + (typeof todasCategorias !== "undefined" ? todasCategorias.length + " item(ns)" : "não definido"));
-    relatorio.push("todasVisitas: " + (typeof todasVisitas !== "undefined" ? todasVisitas.length + " item(ns)" : "não definido"));
-    relatorio.push("Chart.js carregado: " + (typeof Chart !== "undefined"));
-    relatorio.push("localStorage cap_sessao: " + (localStorage.getItem("cap_sessao") ? "existe" : "não existe"));
-    relatorio.push("Erros JS capturados até agora: " + window.__errosCapturados.length);
-    window.__errosCapturados.forEach(function (e) {
-      relatorio.push("  - [" + e.hora + "] (" + e.tipo + ") " + e.mensagem);
-    });
-    if (conteudoEl) {
-      relatorio.push("");
-      relatorio.push("Primeiros 300 caracteres do HTML em #conteudo:");
-      relatorio.push(conteudoEl.innerHTML.slice(0, 300) || "(completamente vazio)");
-    }
+  const relatorio = [];
+  relatorio.push("=== DIAGNÓSTICO DO SISTEMA ===");
+  relatorio.push("Hora: " + new Date().toLocaleTimeString());
+  relatorio.push("Página atual: " + (paginaAtivaEl ? paginaAtivaEl.id : "nenhuma página carregada em #conteudo"));
+  relatorio.push("Login visível (real): " + loginVisivel);
+  relatorio.push("App visível (real): " + appVisivel);
+  relatorio.push("usuarioAtual definido: " + (typeof usuarioAtual !== "undefined" && usuarioAtual !== null));
+  relatorio.push("usuarioAtual.tipo: " + (typeof usuarioAtual !== "undefined" && usuarioAtual ? usuarioAtual.tipo : "N/A"));
+  relatorio.push("Tamanho do HTML em #conteudo: " + (conteudoEl ? conteudoEl.innerHTML.length : "elemento não existe"));
+  relatorio.push("Texto visível em #conteudo (100 primeiros caract.): " + (conteudoEl ? JSON.stringify(conteudoEl.textContent.replace(/\s+/g, " ").trim().slice(0, 100)) : "N/A"));
+  relatorio.push("todasTarefas: " + (typeof todasTarefas !== "undefined" ? todasTarefas.length + " item(ns)" : "não definido"));
+  relatorio.push("todosClientes: " + (typeof todosClientes !== "undefined" ? todosClientes.length + " item(ns)" : "não definido"));
+  relatorio.push("todasCategorias: " + (typeof todasCategorias !== "undefined" ? todasCategorias.length + " item(ns)" : "não definido"));
+  relatorio.push("todasVisitas: " + (typeof todasVisitas !== "undefined" ? todasVisitas.length + " item(ns)" : "não definido"));
+  relatorio.push("Chart.js carregado: " + (typeof Chart !== "undefined"));
+  relatorio.push("localStorage cap_sessao: " + (localStorage.getItem("cap_sessao") ? "existe" : "não existe"));
+  relatorio.push("Erros JS capturados até agora: " + window.__errosCapturados.length);
+  window.__errosCapturados.forEach(function (e) {
+    relatorio.push("  - [" + e.hora + "] (" + e.tipo + ") " + e.mensagem);
+  });
+  relatorio.push("");
+  relatorio.push("Primeiros 500 caracteres do HTML em #conteudo:");
+  relatorio.push(conteudoEl ? (conteudoEl.innerHTML.slice(0, 500) || "(completamente vazio)") : "elemento #conteudo não existe");
+  return relatorio.join("\n");
+}
 
-    let painel = document.getElementById("painel-erro-global");
-    if (!painel) {
-      painel = document.createElement("div");
-      painel.id = "painel-erro-global";
-      painel.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;background:#3d0d0a;color:#ffd9d5;padding:14px 16px;font-family:monospace;font-size:12px;max-height:60vh;overflow-y:auto;box-shadow:0 4px 20px rgba(0,0,0,0.4);";
-      document.body.appendChild(painel);
-    }
-    painel.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
-      '<strong style="color:#ff8a80;">⚠️ Diagnóstico automático — copie e envie este texto:</strong>' +
-      '<button onclick="document.getElementById(\'painel-erro-global\').remove()" style="background:none;border:1px solid #ff8a80;color:#ff8a80;border-radius:6px;padding:2px 10px;cursor:pointer;">Fechar</button>' +
-      '</div><pre style="white-space:pre-wrap;margin:0;">' + relatorio.join("\n") + '</pre>';
+function exibirPainelDiagnostico(texto) {
+  let painel = document.getElementById("painel-erro-global");
+  if (!painel) {
+    painel = document.createElement("div");
+    painel.id = "painel-erro-global";
+    painel.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;background:#3d0d0a;color:#ffd9d5;padding:14px 16px;font-family:monospace;font-size:12px;max-height:60vh;overflow-y:auto;box-shadow:0 4px 20px rgba(0,0,0,0.4);";
+    document.body.appendChild(painel);
+  }
+  painel.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+    '<strong style="color:#ff8a80;">⚠️ Diagnóstico — copie e envie este texto:</strong>' +
+    '<button onclick="document.getElementById(\'painel-erro-global\').remove()" style="background:none;border:1px solid #ff8a80;color:#ff8a80;border-radius:6px;padding:2px 10px;cursor:pointer;">Fechar</button>' +
+    '</div><pre style="white-space:pre-wrap;margin:0;">' + texto + '</pre>';
+}
+
+function verificarTelaVazia() {
+  const appEl = document.getElementById("app");
+  const appVisivel = appEl && window.getComputedStyle(appEl).display !== "none";
+  const conteudoEl = document.getElementById("conteudo");
+  // Usa textContent (não innerText): não depende do motor de renderização visual,
+  // por isso é confiável mesmo em condições de layout atípicas.
+  const textoVisivel = conteudoEl ? conteudoEl.textContent.replace(/\s+/g, " ").trim() : "";
+  const temConteudoReal = textoVisivel.length > 0;
+
+  if (appVisivel && !temConteudoReal) {
+    exibirPainelDiagnostico(gerarRelatorioDiagnostico());
   }
 }
 setTimeout(verificarTelaVazia, 3000);
 setInterval(verificarTelaVazia, 5000); // continua checando a cada 5s, cobrindo navegação entre páginas
+
+// Botão manual na barra superior: força a exibição do diagnóstico a qualquer momento
+document.addEventListener("click", function (e) {
+  if (e.target && e.target.id === "btn-forcar-diagnostico") {
+    exibirPainelDiagnostico(gerarRelatorioDiagnostico());
+  }
+});
 </script>
 </body>
 </html>
