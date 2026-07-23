@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>CAP Consultoria | Painel de Tarefas</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 :root{
   --carvao-900:#1c1d1f;
@@ -54,7 +53,7 @@ body{
   position:absolute;
   width:600px;height:600px;
   border-radius:50%;
-  border:1px solid rgba(201,162,75,0.15);
+  border:1px solid rgba(254,110,11,0.15);
   top:-200px; right:-200px;
 }
 #tela-login::after{
@@ -62,7 +61,7 @@ body{
   position:absolute;
   width:400px;height:400px;
   border-radius:50%;
-  border:1px solid rgba(201,162,75,0.1);
+  border:1px solid rgba(254,110,11,0.1);
   bottom:-150px; left:-150px;
 }
 .login-card{
@@ -113,7 +112,7 @@ body{
   text-transform:uppercase;
   letter-spacing:0.4px;
 }
-.campo input, .campo select{
+.campo input, .campo select, .campo textarea{
   width:100%;
   padding:12px 14px;
   border:1.5px solid var(--linha);
@@ -122,18 +121,21 @@ body{
   color:var(--texto);
   background:#fbfcfe;
   transition:border-color .15s;
+  font-family:inherit;
 }
-.campo input:focus, .campo select:focus{
+.campo input:focus, .campo select:focus, .campo textarea:focus{
   outline:none;
-  border-color:var(--grafite-500);
+  border-color:var(--laranja);
   background:#fff;
 }
+.campo-linha{display:flex;gap:10px;}
+.campo-linha .campo{flex:1;}
 .btn{
   width:100%;
   padding:13px;
   border:none;
   border-radius:10px;
-  background:var(--grafite-700);
+  background:var(--carvao-900);
   color:#fff;
   font-size:15px;
   font-weight:600;
@@ -141,16 +143,17 @@ body{
   transition:background .15s, transform .1s;
   letter-spacing:0.2px;
 }
-.btn:hover{background:var(--grafite-600);}
+.btn:hover{background:var(--grafite-700);}
 .btn:active{transform:scale(0.98);}
 .btn-laranja{background:var(--laranja);color:#fff;}
-.btn-laranja:hover{background:var(--laranja-light);}
+.btn-laranja:hover{background:var(--laranja-dark);}
 .btn-outline{
   background:transparent;
   border:1.5px solid var(--linha);
   color:var(--texto);
 }
-.btn-outline:hover{border-color:var(--grafite-500);color:var(--grafite-500);}
+.btn-outline:hover{border-color:var(--laranja);color:var(--laranja-dark);}
+.btn-sm{width:auto;padding:8px 14px;font-size:13px;}
 .erro-msg{
   background:#fdecec;
   color:var(--vermelho);
@@ -238,25 +241,31 @@ body{
 }
 .sidebar-header .marca img{width:100%;height:100%;object-fit:contain;}
 .sidebar-header h2{color:#fff;font-size:15px;font-weight:700;}
-.sidebar-header p{color:#8fa3c7;font-size:11.5px;}
+.sidebar-header p{color:#a8a9ac;font-size:11.5px;}
 .menu-item{
   display:flex;align-items:center;gap:12px;
   padding:13px 20px;
-  color:#c3cfe6;
+  color:#c3c4c7;
   text-decoration:none;
   font-size:14.5px;
   font-weight:500;
   cursor:pointer;
   border-left:3px solid transparent;
   transition:background .15s;
+  position:relative;
 }
 .menu-item:hover{background:rgba(255,255,255,0.05);}
 .menu-item.ativo{
-  background:rgba(201,162,75,0.12);
+  background:rgba(254,110,11,0.12);
   border-left-color:var(--laranja);
   color:#fff;
 }
 .menu-item .icone{font-size:17px;width:22px;text-align:center;}
+.menu-item .contador{
+  margin-left:auto;background:var(--laranja);color:#fff;
+  font-size:10.5px;font-weight:700;border-radius:20px;
+  padding:1px 7px;
+}
 .menu-sair{
   margin-top:auto;
   padding:16px 20px;
@@ -288,11 +297,12 @@ body{
   border-radius:var(--radius);
   padding:16px;
   box-shadow:var(--shadow);
-  border-top:3px solid var(--grafite-500);
+  border-top:3px solid var(--laranja);
 }
 .card-indicador.laranja{border-top-color:var(--laranja);}
 .card-indicador.verde{border-top-color:var(--verde);}
 .card-indicador.vermelho{border-top-color:var(--vermelho);}
+.card-indicador.cinza{border-top-color:var(--prata);}
 .card-indicador .valor{font-size:26px;font-weight:800;color:var(--carvao-900);}
 .card-indicador .label{font-size:12.5px;color:var(--texto-suave);margin-top:2px;font-weight:500;}
 
@@ -309,7 +319,7 @@ body{
   flex-wrap:wrap;gap:8px;
 }
 .filtros{display:flex;gap:8px;flex-wrap:wrap;}
-.filtros select{
+.filtros select, .filtros input{
   padding:8px 10px;border-radius:8px;border:1.5px solid var(--linha);
   font-size:13px;background:#fbfcfe;color:var(--texto);
 }
@@ -331,6 +341,7 @@ body{
 }
 .agenda-data .num{font-size:17px;font-weight:800;line-height:1;}
 .agenda-data .mes{font-size:10px;text-transform:uppercase;color:var(--laranja-light);}
+.agenda-info{flex:1;}
 .agenda-info strong{font-size:13.5px;color:var(--texto);display:block;}
 .agenda-info span{font-size:12px;color:var(--texto-suave);}
 .badge{
@@ -338,9 +349,24 @@ body{
   padding:2px 8px;border-radius:20px;text-transform:uppercase;
   letter-spacing:.3px;margin-top:4px;
 }
-.badge.aberta{background:#fdeee0;color:var(--amarelo);}
+.badge.aberta{background:#f0f0f0;color:var(--grafite-600);}
 .badge.em_andamento{background:#fde3cf;color:var(--laranja-dark);}
 .badge.concluida{background:#e2f5e8;color:var(--verde);}
+.badge.pendente{background:#fdf3d4;color:var(--amarelo);}
+.badge.agendada{background:#e2ecfb;color:#2563b5;}
+.badge.realizada{background:#e2f5e8;color:var(--verde);}
+.badge.cancelada{background:#fdecec;color:var(--vermelho);}
+.badge-prioridade{
+  display:inline-block;font-size:10px;font-weight:700;
+  padding:2px 7px;border-radius:6px;text-transform:uppercase;
+}
+.badge-prioridade.baixa{background:#eef1f4;color:var(--grafite-600);}
+.badge-prioridade.media{background:#fdf3d4;color:var(--amarelo);}
+.badge-prioridade.alta{background:#fdecec;color:var(--vermelho);}
+.chip-categoria{
+  display:inline-block;font-size:11px;font-weight:600;
+  padding:3px 9px;border-radius:20px;color:#fff;
+}
 
 /* Tabelas / listas */
 .tabela{width:100%;border-collapse:collapse;}
@@ -348,12 +374,13 @@ body{
   text-align:left;font-size:11.5px;color:var(--texto-suave);
   text-transform:uppercase;letter-spacing:.4px;
   padding:8px 10px;border-bottom:2px solid var(--linha);
+  white-space:nowrap;
 }
-.tabela td{padding:10px;border-bottom:1px solid var(--linha);font-size:13.5px;}
+.tabela td{padding:10px;border-bottom:1px solid var(--linha);font-size:13.5px;vertical-align:top;}
 .tabela tr:last-child td{border-bottom:none;}
 .tabela-scroll{overflow-x:auto;}
 
-.acoes-linha{display:flex;gap:6px;}
+.acoes-linha{display:flex;gap:6px;flex-wrap:wrap;}
 .btn-icone{
   width:30px;height:30px;border-radius:8px;border:1px solid var(--linha);
   background:#fff;cursor:pointer;font-size:13px;
@@ -361,6 +388,14 @@ body{
 }
 .btn-icone:hover{background:var(--bg);}
 .btn-icone.perigo:hover{background:#fdecec;border-color:#f3b9b4;}
+.btn-icone.ativo{background:var(--laranja);border-color:var(--laranja);color:#fff;}
+
+.cronometro{
+  display:flex;align-items:center;gap:6px;
+  font-variant-numeric:tabular-nums;
+  font-size:12.5px;color:var(--texto-suave);
+}
+.cronometro.rodando{color:var(--laranja-dark);font-weight:700;}
 
 .btn-flutuante{
   position:fixed;bottom:22px;right:22px;
@@ -371,7 +406,7 @@ body{
   cursor:pointer;z-index:40;
   display:flex;align-items:center;justify-content:center;
 }
-.btn-flutuante:hover{background:var(--laranja-light);}
+.btn-flutuante:hover{background:var(--laranja-dark);}
 
 /* Modal */
 .modal-overlay{
@@ -380,7 +415,7 @@ body{
 }
 .modal{
   background:#fff;border-radius:var(--radius);
-  width:100%;max-width:460px;max-height:90vh;overflow-y:auto;
+  width:100%;max-width:480px;max-height:90vh;overflow-y:auto;
   padding:24px;
 }
 .modal h3{font-size:17px;color:var(--carvao-900);margin-bottom:16px;}
@@ -395,8 +430,56 @@ select.select-status{
   padding:5px 8px;border-radius:6px;border:1px solid var(--linha);font-size:12.5px;
 }
 
+.tabs{display:flex;gap:4px;background:var(--bg);padding:4px;border-radius:10px;margin-bottom:16px;flex-wrap:wrap;}
+.tab-item{
+  padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;
+  color:var(--texto-suave);cursor:pointer;border:none;background:transparent;
+}
+.tab-item.ativa{background:#fff;color:var(--carvao-900);box-shadow:var(--shadow);}
+
+.solicitacao-card{
+  border:1.5px solid var(--linha);border-radius:10px;padding:14px;margin-bottom:10px;
+  display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;
+}
+.solicitacao-info strong{display:block;font-size:14px;margin-bottom:2px;}
+.solicitacao-info span{font-size:12px;color:var(--texto-suave);}
+.solicitacao-acoes{display:flex;gap:8px;}
+
+/* Calendário de visitas */
+.calendario-header{
+  display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;
+}
+.calendario-header h3{font-size:15px;color:var(--carvao-900);}
+.calendario-nav{display:flex;gap:6px;}
+.calendario-grid{
+  display:grid;grid-template-columns:repeat(7,1fr);gap:4px;
+}
+.calendario-dia-nome{
+  text-align:center;font-size:10.5px;font-weight:700;color:var(--texto-suave);
+  text-transform:uppercase;padding:6px 0;
+}
+.calendario-dia{
+  min-height:64px;border-radius:8px;background:var(--bg);
+  padding:4px;font-size:11.5px;position:relative;cursor:pointer;
+  border:1.5px solid transparent;
+}
+.calendario-dia:hover{border-color:var(--laranja);}
+.calendario-dia.outro-mes{opacity:0.35;}
+.calendario-dia.hoje{background:#fde3cf;}
+.calendario-dia .num-dia{font-weight:700;color:var(--texto);}
+.calendario-dia .ponto-evento{
+  width:6px;height:6px;border-radius:50%;background:var(--laranja);
+  display:inline-block;margin:2px 1px 0 0;
+}
+.legenda-empresa{
+  display:flex;align-items:center;gap:6px;font-size:12px;color:var(--texto-suave);margin-top:8px;
+}
+
 @media(min-width:640px){
   #conteudo{padding:24px;}
+}
+@media(max-width:480px){
+  .calendario-dia{min-height:48px;font-size:10px;}
 }
 </style>
 </head>
@@ -450,103 +533,187 @@ select.select-status{
     </div>
   </div>
 
-  <div id="conteudo">
-
-    <!-- PÁGINA: DASHBOARD -->
-    <section class="pagina" id="pagina-dashboard">
-      <div class="page-header">
-        <div>
-          <h1>Painel geral</h1>
-          <p>Acompanhamento de tarefas e indicadores</p>
-        </div>
-      </div>
-
-      <div class="card" id="card-filtros-dashboard" style="display:none">
-        <div class="filtros">
-          <select id="filtro-empresa"><option value="">Todas as empresas</option></select>
-          <select id="filtro-mes">
-            <option value="">Todos os meses</option>
-          </select>
-          <select id="filtro-ano"></select>
-        </div>
-      </div>
-
-      <div class="grid-indicadores" id="indicadores"></div>
-
-      <div class="grid-2col">
-        <div class="card">
-          <div class="card-titulo">Tarefas: abertas x concluídas (Jan–Dez)</div>
-          <div class="grafico-wrap"><canvas id="grafico-anual"></canvas></div>
-        </div>
-        <div class="card">
-          <div class="card-titulo">Agenda dos próximos dias</div>
-          <div id="agenda-lista"></div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-titulo">Status atual das tarefas</div>
-        <div class="grafico-wrap pequeno"><canvas id="grafico-status"></canvas></div>
-      </div>
-    </section>
-
-    <!-- PÁGINA: TAREFAS -->
-    <section class="pagina" id="pagina-tarefas">
-      <div class="page-header">
-        <div>
-          <h1>Tarefas</h1>
-          <p id="tarefas-sub">Acompanhe o andamento de cada tarefa</p>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-titulo">
-          Lista de tarefas
-          <div class="filtros">
-            <select id="filtro-tarefas-status">
-              <option value="">Todos os status</option>
-              <option value="aberta">Aberta</option>
-              <option value="em_andamento">Em andamento</option>
-              <option value="concluida">Concluída</option>
-            </select>
-            <select id="filtro-tarefas-empresa" style="display:none"><option value="">Todas as empresas</option></select>
-          </div>
-        </div>
-        <div class="tabela-scroll">
-          <table class="tabela" id="tabela-tarefas">
-            <thead><tr>
-              <th>Tarefa</th><th id="th-cliente">Cliente</th><th>Prazo</th><th>Status</th><th>Prioridade</th><th></th>
-            </tr></thead>
-            <tbody id="tabela-tarefas-corpo"></tbody>
-          </table>
-        </div>
-        <div class="vazio" id="tarefas-vazio" style="display:none">Nenhuma tarefa encontrada.</div>
-      </div>
-    </section>
-
-    <!-- PÁGINA: CLIENTES (admin) -->
-    <section class="pagina" id="pagina-clientes">
-      <div class="page-header">
-        <div>
-          <h1>Clientes</h1>
-          <p>Cadastro de clientes com acesso ao painel</p>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-titulo">Clientes cadastrados</div>
-        <div class="tabela-scroll">
-          <table class="tabela">
-            <thead><tr><th>Nome</th><th>Empresa</th><th>E-mail</th><th>Status</th><th></th></tr></thead>
-            <tbody id="tabela-clientes-corpo"></tbody>
-          </table>
-        </div>
-        <div class="vazio" id="clientes-vazio" style="display:none">Nenhum cliente cadastrado ainda.</div>
-      </div>
-    </section>
-
-  </div>
+  <div id="conteudo"></div>
 
   <button class="btn-flutuante" id="btn-flutuante" title="Nova tarefa">+</button>
 </div>
+
+<!-- ================= TEMPLATES DE PÁGINAS (JS injeta em #conteudo) ================= -->
+<template id="tpl-dashboard">
+  <section class="pagina" id="pagina-dashboard">
+    <div class="page-header">
+      <div>
+        <h1>Painel geral</h1>
+        <p>Acompanhamento de tarefas e indicadores</p>
+      </div>
+    </div>
+
+    <div class="card" id="card-filtros-dashboard" style="display:none">
+      <div class="filtros">
+        <select id="filtro-empresa"><option value="">Todas as empresas</option></select>
+        <select id="filtro-mes"></select>
+        <select id="filtro-ano"></select>
+        <select id="filtro-categoria-dash"><option value="">Todas as categorias</option></select>
+      </div>
+    </div>
+
+    <div class="grid-indicadores" id="indicadores"></div>
+
+    <div class="grid-2col">
+      <div class="card">
+        <div class="card-titulo">Tarefas: abertas x concluídas (Jan–Dez)</div>
+        <div class="grafico-wrap"><canvas id="grafico-anual"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-titulo">Agenda dos próximos dias</div>
+        <div id="agenda-lista"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-titulo">Status atual das tarefas</div>
+      <div class="grafico-wrap pequeno"><canvas id="grafico-status"></canvas></div>
+    </div>
+  </section>
+</template>
+
+<template id="tpl-tarefas">
+  <section class="pagina" id="pagina-tarefas">
+    <div class="page-header">
+      <div>
+        <h1>Tarefas</h1>
+        <p id="tarefas-sub">Acompanhe o andamento de cada tarefa</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-titulo">
+        Lista de tarefas
+      </div>
+      <div class="filtros" style="margin-bottom:14px">
+        <select id="filtro-tarefas-status">
+          <option value="">Todos os status</option>
+          <option value="aberta">Aberta</option>
+          <option value="em_andamento">Em andamento</option>
+          <option value="concluida">Concluída</option>
+        </select>
+        <select id="filtro-tarefas-empresa" style="display:none"><option value="">Todas as empresas</option></select>
+        <select id="filtro-tarefas-categoria"><option value="">Todas as categorias</option></select>
+        <select id="filtro-tarefas-prioridade">
+          <option value="">Todas as prioridades</option>
+          <option value="baixa">Baixa</option>
+          <option value="media">Média</option>
+          <option value="alta">Alta</option>
+        </select>
+        <input type="date" id="filtro-tarefas-de" title="De">
+        <input type="date" id="filtro-tarefas-ate" title="Até">
+      </div>
+      <div class="tabela-scroll">
+        <table class="tabela" id="tabela-tarefas">
+          <thead><tr>
+            <th>Tarefa</th><th id="th-cliente">Cliente</th><th>Categoria</th><th>Colaborador</th><th>Início</th><th>Prazo</th><th>Tempo</th><th>Status</th><th>Prioridade</th><th></th>
+          </tr></thead>
+          <tbody id="tabela-tarefas-corpo"></tbody>
+        </table>
+      </div>
+      <div class="vazio" id="tarefas-vazio" style="display:none">Nenhuma tarefa encontrada.</div>
+    </div>
+  </section>
+</template>
+
+<template id="tpl-solicitacoes">
+  <section class="pagina" id="pagina-solicitacoes">
+    <div class="page-header">
+      <div>
+        <h1>Solicitações</h1>
+        <p>Tarefas incluídas pelos clientes, aguardando aprovação</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-titulo">Pendentes de aprovação</div>
+      <div id="lista-solicitacoes"></div>
+      <div class="vazio" id="solicitacoes-vazio" style="display:none">Nenhuma solicitação pendente.</div>
+    </div>
+  </section>
+</template>
+
+<template id="tpl-categorias">
+  <section class="pagina" id="pagina-categorias">
+    <div class="page-header">
+      <div>
+        <h1>Categorias</h1>
+        <p>Categorias usadas no lançamento de tarefas</p>
+      </div>
+      <button class="btn btn-laranja btn-sm" id="btn-nova-categoria">+ Nova categoria</button>
+    </div>
+    <div class="card">
+      <div class="card-titulo">Categorias cadastradas</div>
+      <div class="tabela-scroll">
+        <table class="tabela">
+          <thead><tr><th>Nome</th><th>Cor</th><th></th></tr></thead>
+          <tbody id="tabela-categorias-corpo"></tbody>
+        </table>
+      </div>
+      <div class="vazio" id="categorias-vazio" style="display:none">Nenhuma categoria cadastrada.</div>
+    </div>
+  </section>
+</template>
+
+<template id="tpl-agenda">
+  <section class="pagina" id="pagina-agenda">
+    <div class="page-header">
+      <div>
+        <h1>Agenda de visitas</h1>
+        <p id="agenda-sub">Calendário de visitas agendadas</p>
+      </div>
+      <button class="btn btn-laranja btn-sm" id="btn-nova-visita">+ Agendar visita</button>
+    </div>
+    <div class="card" id="card-filtro-empresa-agenda" style="display:none">
+      <div class="filtros">
+        <select id="filtro-agenda-empresa"><option value="">Todas as empresas</option></select>
+      </div>
+    </div>
+    <div class="card">
+      <div class="calendario-header">
+        <h3 id="calendario-titulo">Mês</h3>
+        <div class="calendario-nav">
+          <button class="btn-icone" id="btn-mes-anterior">‹</button>
+          <button class="btn-icone" id="btn-mes-proximo">›</button>
+        </div>
+      </div>
+      <div class="calendario-grid" id="calendario-dias-nomes">
+        <div class="calendario-dia-nome">Dom</div><div class="calendario-dia-nome">Seg</div><div class="calendario-dia-nome">Ter</div>
+        <div class="calendario-dia-nome">Qua</div><div class="calendario-dia-nome">Qui</div><div class="calendario-dia-nome">Sex</div><div class="calendario-dia-nome">Sáb</div>
+      </div>
+      <div class="calendario-grid" id="calendario-grid" style="margin-top:4px"></div>
+    </div>
+    <div class="card">
+      <div class="card-titulo">Próximas visitas</div>
+      <div id="lista-visitas"></div>
+      <div class="vazio" id="visitas-vazio" style="display:none">Nenhuma visita agendada.</div>
+    </div>
+  </section>
+</template>
+
+<template id="tpl-clientes">
+  <section class="pagina" id="pagina-clientes">
+    <div class="page-header">
+      <div>
+        <h1>Clientes</h1>
+        <p>Cadastro de clientes com acesso ao painel</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-titulo">Clientes cadastrados</div>
+      <div class="tabela-scroll">
+        <table class="tabela">
+          <thead><tr><th>Nome</th><th>Empresa</th><th>E-mail</th><th>Status</th><th></th></tr></thead>
+          <tbody id="tabela-clientes-corpo"></tbody>
+        </table>
+      </div>
+      <div class="vazio" id="clientes-vazio" style="display:none">Nenhum cliente cadastrado ainda.</div>
+    </div>
+  </section>
+</template>
 
 <!-- MODAL: Nova/Editar Tarefa -->
 <div class="modal-overlay" id="modal-tarefa">
@@ -565,9 +732,23 @@ select.select-status{
       <label>Descrição</label>
       <input type="text" id="tarefa-descricao" placeholder="Detalhes (opcional)">
     </div>
-    <div class="campo">
-      <label>Prazo</label>
-      <input type="date" id="tarefa-data">
+    <div class="campo" id="campo-tarefa-categoria">
+      <label>Categoria</label>
+      <select id="tarefa-categoria"><option value="">Sem categoria</option></select>
+    </div>
+    <div class="campo" id="campo-tarefa-colaborador">
+      <label>Colaborador responsável</label>
+      <input type="text" id="tarefa-colaborador" placeholder="Nome do colaborador">
+    </div>
+    <div class="campo-linha">
+      <div class="campo">
+        <label>Data início</label>
+        <input type="date" id="tarefa-data-inicio">
+      </div>
+      <div class="campo">
+        <label>Prazo p/ conclusão</label>
+        <input type="date" id="tarefa-data">
+      </div>
     </div>
     <div class="campo">
       <label>Prioridade</label>
@@ -577,7 +758,7 @@ select.select-status{
         <option value="alta">Alta</option>
       </select>
     </div>
-    <div class="campo">
+    <div class="campo" id="campo-tarefa-status">
       <label>Status</label>
       <select id="tarefa-status">
         <option value="aberta">Aberta</option>
@@ -608,6 +789,92 @@ select.select-status{
   </div>
 </div>
 
+<!-- MODAL: Nova Categoria -->
+<div class="modal-overlay" id="modal-categoria">
+  <div class="modal">
+    <h3>Nova categoria</h3>
+    <div class="campo"><label>Nome</label><input type="text" id="categoria-nome" placeholder="Ex: Fiscal, Trabalhista..."></div>
+    <div class="campo"><label>Cor</label><input type="color" id="categoria-cor" value="#fe6e0b" style="height:44px;padding:4px;"></div>
+    <div class="modal-acoes">
+      <button class="btn btn-outline" id="btn-cancelar-categoria">Cancelar</button>
+      <button class="btn" id="btn-salvar-categoria">Cadastrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Nova solicitação (cliente cria tarefa) -->
+<div class="modal-overlay" id="modal-solicitacao">
+  <div class="modal">
+    <h3>Solicitar nova tarefa</h3>
+    <p style="font-size:12.5px;color:var(--texto-suave);margin-bottom:14px">Sua solicitação será enviada para aprovação da CAP Consultoria.</p>
+    <div class="campo"><label>Título</label><input type="text" id="solicitacao-titulo" placeholder="Do que você precisa?"></div>
+    <div class="campo"><label>Descrição</label><input type="text" id="solicitacao-descricao" placeholder="Detalhes (opcional)"></div>
+    <div class="campo">
+      <label>Prioridade sugerida</label>
+      <select id="solicitacao-prioridade">
+        <option value="baixa">Baixa</option>
+        <option value="media" selected>Média</option>
+        <option value="alta">Alta</option>
+      </select>
+    </div>
+    <div class="campo"><label>Prazo desejado</label><input type="date" id="solicitacao-data"></div>
+    <div class="modal-acoes">
+      <button class="btn btn-outline" id="btn-cancelar-solicitacao">Cancelar</button>
+      <button class="btn btn-laranja" id="btn-enviar-solicitacao">Enviar solicitação</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Nova/Editar Visita -->
+<div class="modal-overlay" id="modal-visita">
+  <div class="modal">
+    <h3 id="modal-visita-titulo">Agendar visita</h3>
+    <input type="hidden" id="visita-id">
+    <div class="campo" id="campo-visita-cliente">
+      <label>Empresa / cliente</label>
+      <select id="visita-cliente"></select>
+    </div>
+    <div class="campo"><label>Título</label><input type="text" id="visita-titulo" placeholder="Ex: Visita de auditoria mensal"></div>
+    <div class="campo"><label>Descrição</label><input type="text" id="visita-descricao" placeholder="Detalhes (opcional)"></div>
+    <div class="campo"><label>Data da visita</label><input type="date" id="visita-data"></div>
+    <div class="campo-linha">
+      <div class="campo"><label>Hora início</label><input type="time" id="visita-hora-inicio"></div>
+      <div class="campo"><label>Hora fim</label><input type="time" id="visita-hora-fim"></div>
+    </div>
+    <div class="campo"><label>Local</label><input type="text" id="visita-local" placeholder="Endereço ou local"></div>
+    <div class="campo"><label>Responsável</label><input type="text" id="visita-responsavel" placeholder="Quem vai atender"></div>
+    <div class="campo">
+      <label>Status</label>
+      <select id="visita-status">
+        <option value="agendada">Agendada</option>
+        <option value="realizada">Realizada</option>
+        <option value="cancelada">Cancelada</option>
+      </select>
+    </div>
+    <div class="modal-acoes">
+      <button class="btn btn-outline" id="btn-cancelar-visita">Cancelar</button>
+      <button class="btn" id="btn-salvar-visita">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+// Fallback: se o CDN principal falhar (bloqueio de rede, adblock, etc.),
+// tenta um segundo CDN antes de deixar o usuário sem gráficos.
+function garantirChartJs(callback) {
+  if (typeof Chart !== "undefined") { callback(); return; }
+  const s = document.createElement("script");
+  s.src = "https://unpkg.com/chart.js@4.4.1/dist/chart.umd.js";
+  s.onload = callback;
+  s.onerror = function () {
+    console.error("Não foi possível carregar a biblioteca de gráficos (Chart.js) de nenhuma fonte.");
+    callback(); // segue mesmo assim; o código dos gráficos já checa "typeof Chart"
+  };
+  document.head.appendChild(s);
+}
+</script>
+
 <script>
 /* ================= CONFIG SUPABASE ================= */
 const SUPABASE_URL = "https://bubviycvssuduopmjchj.supabase.co";
@@ -633,12 +900,19 @@ async function sb(path, opts = {}) {
 }
 
 /* ================= ESTADO ================= */
-let usuarioAtual = null; // {id, nome, email, tipo, empresa}
+let usuarioAtual = null;
 let todosClientes = [];
 let todasTarefas = [];
+let todasCategorias = [];
+let todasVisitas = [];
 let graficoAnual, graficoStatus;
+let cronometrosAtivos = {}; // {tarefaId: intervalId}
+let calendarioMesAtual = new Date().getMonth();
+let calendarioAnoAtual = new Date().getFullYear();
 
 const MESES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+const MESES_LONGO = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+const DIAS_SEMANA = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
 
 /* ================= LOGIN ================= */
 document.getElementById("form-login").addEventListener("submit", async (e) => {
@@ -662,7 +936,7 @@ document.getElementById("form-login").addEventListener("submit", async (e) => {
     }
     usuarioAtual = users[0];
     localStorage.setItem("cap_sessao", JSON.stringify(usuarioAtual));
-    iniciarApp();
+    garantirChartJs(iniciarApp);
   } catch (err) {
     erroEl.textContent = "Não foi possível conectar. Verifique sua internet e tente novamente.";
     erroEl.style.display = "block";
@@ -675,13 +949,12 @@ document.getElementById("btn-sair").addEventListener("click", () => {
   location.reload();
 });
 
-// Sessão salva
 (function checarSessao() {
   const salvo = localStorage.getItem("cap_sessao");
   if (salvo) {
     try {
       usuarioAtual = JSON.parse(salvo);
-      iniciarApp();
+      garantirChartJs(iniciarApp);
     } catch (e) { localStorage.removeItem("cap_sessao"); }
   }
 })();
@@ -694,17 +967,13 @@ async function iniciarApp() {
   document.getElementById("sidebar-user").textContent = usuarioAtual.tipo === "admin" ? "Administrador" : (usuarioAtual.empresa || usuarioAtual.nome);
 
   montarMenu();
-  montarSelectAno();
 
-  if (usuarioAtual.tipo === "admin") {
-    document.getElementById("card-filtros-dashboard").style.display = "block";
-    document.getElementById("filtro-tarefas-empresa").style.display = "inline-block";
-  } else {
-    document.getElementById("th-cliente").style.display = "none";
-    document.getElementById("campo-tarefa-cliente").style.display = "none";
+  try {
+    await carregarDados();
+  } catch (err) {
+    alert("Erro ao carregar dados do sistema: " + err.message);
+    console.error(err);
   }
-
-  await carregarDados();
   irParaPagina("dashboard");
 }
 
@@ -719,13 +988,16 @@ function montarMenu() {
   const itens = [
     { id: "dashboard", label: "Painel geral", icone: "📊" },
     { id: "tarefas", label: "Tarefas", icone: "✅" },
+    { id: "agenda", label: "Agenda de visitas", icone: "🗓️" },
   ];
   if (usuarioAtual.tipo === "admin") {
+    itens.push({ id: "solicitacoes", label: "Solicitações", icone: "📥", contador: true });
+    itens.push({ id: "categorias", label: "Categorias", icone: "🏷️" });
     itens.push({ id: "clientes", label: "Clientes", icone: "👥" });
   }
   const container = document.getElementById("menu-itens");
   container.innerHTML = itens.map(it =>
-    `<div class="menu-item" data-pagina="${it.id}"><span class="icone">${it.icone}</span>${it.label}</div>`
+    `<div class="menu-item" data-pagina="${it.id}"><span class="icone">${it.icone}</span>${it.label}${it.contador ? `<span class="contador" id="contador-solicitacoes" style="display:none">0</span>` : ""}</div>`
   ).join("");
   container.querySelectorAll(".menu-item").forEach(el => {
     el.addEventListener("click", () => {
@@ -736,14 +1008,51 @@ function montarMenu() {
 }
 
 function irParaPagina(id) {
-  document.querySelectorAll(".pagina").forEach(p => p.classList.remove("ativa"));
-  document.getElementById(`pagina-${id}`).classList.add("ativa");
+  const conteudo = document.getElementById("conteudo");
+  const tpl = document.getElementById(`tpl-${id}`);
+  conteudo.innerHTML = "";
+  conteudo.appendChild(tpl.content.cloneNode(true));
   document.querySelectorAll(".menu-item").forEach(m => m.classList.toggle("ativo", m.dataset.pagina === id));
-  const titulos = { dashboard: "Painel geral", tarefas: "Tarefas", clientes: "Clientes" };
+  const titulos = { dashboard: "Painel geral", tarefas: "Tarefas", solicitacoes: "Solicitações", categorias: "Categorias", agenda: "Agenda de visitas", clientes: "Clientes" };
   document.getElementById("topbar-sub").textContent = titulos[id] || "";
+
+  ajustarVisibilidadePorPerfil(id);
+  ligarEventosPagina(id);
+
   if (id === "dashboard") renderizarDashboard();
   if (id === "tarefas") renderizarTabelaTarefas();
+  if (id === "solicitacoes") renderizarSolicitacoes();
+  if (id === "categorias") renderizarTabelaCategorias();
+  if (id === "agenda") renderizarAgendaPagina();
   if (id === "clientes") renderizarTabelaClientes();
+
+  atualizarContadorSolicitacoes();
+}
+
+function ajustarVisibilidadePorPerfil(id) {
+  if (usuarioAtual.tipo === "admin") {
+    if (id === "dashboard") {
+      document.getElementById("card-filtros-dashboard").style.display = "block";
+      popularFiltroEmpresas();
+      montarSelectMesAno();
+      popularFiltroCategoriasDash();
+    }
+    if (id === "tarefas") {
+      document.getElementById("filtro-tarefas-empresa").style.display = "inline-block";
+      popularFiltroEmpresas();
+      popularFiltroCategoriasTarefas();
+    }
+    if (id === "agenda") {
+      document.getElementById("card-filtro-empresa-agenda").style.display = "block";
+      popularFiltroEmpresas();
+    }
+  } else {
+    if (id === "dashboard") montarSelectMesAno();
+    if (id === "tarefas") {
+      document.getElementById("th-cliente").style.display = "none";
+      popularFiltroCategoriasTarefas();
+    }
+  }
 }
 
 const btnHamburguer = document.getElementById("btn-hamburguer");
@@ -764,74 +1073,116 @@ function fecharMenu() {
 
 /* ================= CARREGAR DADOS ================= */
 async function carregarDados() {
-  try {
-    if (usuarioAtual.tipo === "admin") {
-      todosClientes = await sb(`cap_usuarios?tipo=eq.cliente&select=*&order=nome.asc`);
-      todasTarefas = await sb(`cap_tarefas?select=*&order=data_prevista.asc`);
-    } else {
-      todosClientes = [];
-      todasTarefas = await sb(`cap_tarefas?cliente_id=eq.${usuarioAtual.id}&select=*&order=data_prevista.asc`);
-    }
-    popularFiltroEmpresas();
-    popularSelectClienteTarefa();
-  } catch (err) {
-    alert("Erro ao carregar dados do sistema: " + err.message);
-    console.error(err);
+  todasCategorias = await sb(`cap_categorias?select=*&order=nome.asc`);
+  if (usuarioAtual.tipo === "admin") {
+    todosClientes = await sb(`cap_usuarios?tipo=eq.cliente&select=*&order=nome.asc`);
+    todasTarefas = await sb(`cap_tarefas?select=*&order=data_prevista.asc`);
+    todasVisitas = await sb(`cap_visitas?select=*&order=data_visita.asc`);
+  } else {
+    todosClientes = [];
+    todasTarefas = await sb(`cap_tarefas?cliente_id=eq.${usuarioAtual.id}&aprovada=eq.true&select=*&order=data_prevista.asc`);
+    todasVisitas = await sb(`cap_visitas?cliente_id=eq.${usuarioAtual.id}&select=*&order=data_visita.asc`);
   }
 }
 
 function popularFiltroEmpresas() {
   const empresas = [...new Set(todosClientes.map(c => c.empresa).filter(Boolean))].sort();
   const opts = `<option value="">Todas as empresas</option>` + empresas.map(e => `<option value="${e}">${e}</option>`).join("");
-  document.getElementById("filtro-empresa").innerHTML = opts;
-  document.getElementById("filtro-tarefas-empresa").innerHTML = opts;
+  const f1 = document.getElementById("filtro-empresa");
+  const f2 = document.getElementById("filtro-tarefas-empresa");
+  const f3 = document.getElementById("filtro-agenda-empresa");
+  if (f1) f1.innerHTML = opts;
+  if (f2) f2.innerHTML = opts;
+  if (f3) f3.innerHTML = opts;
 }
 
-function montarSelectAno() {
+function popularFiltroCategoriasDash() {
+  const el = document.getElementById("filtro-categoria-dash");
+  if (!el) return;
+  el.innerHTML = `<option value="">Todas as categorias</option>` + todasCategorias.map(c => `<option value="${c.id}">${c.nome}</option>`).join("");
+}
+function popularFiltroCategoriasTarefas() {
+  const el = document.getElementById("filtro-tarefas-categoria");
+  if (!el) return;
+  el.innerHTML = `<option value="">Todas as categorias</option>` + todasCategorias.map(c => `<option value="${c.id}">${c.nome}</option>`).join("");
+}
+
+function montarSelectMesAno() {
   const anoAtual = new Date().getFullYear();
   const selMes = document.getElementById("filtro-mes");
-  selMes.innerHTML = `<option value="">Todos os meses</option>` + MESES.map((m,i) => `<option value="${i}">${m}</option>`).join("");
+  if (selMes) selMes.innerHTML = `<option value="">Todos os meses</option>` + MESES.map((m,i) => `<option value="${i}">${m}</option>`).join("");
   const selAno = document.getElementById("filtro-ano");
-  let opts = "";
-  for (let a = anoAtual - 2; a <= anoAtual + 1; a++) opts += `<option value="${a}" ${a===anoAtual?"selected":""}>${a}</option>`;
-  selAno.innerHTML = opts;
+  if (selAno) {
+    let opts = "";
+    for (let a = anoAtual - 2; a <= anoAtual + 1; a++) opts += `<option value="${a}" ${a===anoAtual?"selected":""}>${a}</option>`;
+    selAno.innerHTML = opts;
+  }
 }
 
 function popularSelectClienteTarefa() {
   const sel = document.getElementById("tarefa-cliente");
-  sel.innerHTML = todosClientes.map(c => `<option value="${c.id}">${c.nome} — ${c.empresa || ""}</option>`).join("");
+  if (sel) sel.innerHTML = todosClientes.map(c => `<option value="${c.id}">${c.nome} — ${c.empresa || ""}</option>`).join("");
+  const selV = document.getElementById("visita-cliente");
+  if (selV) selV.innerHTML = todosClientes.map(c => `<option value="${c.id}">${c.nome} — ${c.empresa || ""}</option>`).join("");
 }
 
-/* ================= FILTROS DASHBOARD ================= */
-["filtro-empresa","filtro-mes","filtro-ano"].forEach(id => {
-  document.getElementById(id).addEventListener("change", renderizarDashboard);
-});
-document.getElementById("filtro-tarefas-status").addEventListener("change", renderizarTabelaTarefas);
-document.getElementById("filtro-tarefas-empresa")?.addEventListener("change", renderizarTabelaTarefas);
+function popularSelectCategoriaTarefa() {
+  const sel = document.getElementById("tarefa-categoria");
+  if (sel) sel.innerHTML = `<option value="">Sem categoria</option>` + todasCategorias.map(c => `<option value="${c.id}">${c.nome}</option>`).join("");
+}
+
+/* ================= LIGAR EVENTOS DE CADA PÁGINA ================= */
+function ligarEventosPagina(id) {
+  if (id === "dashboard") {
+    ["filtro-empresa","filtro-mes","filtro-ano","filtro-categoria-dash"].forEach(elId => {
+      const el = document.getElementById(elId);
+      if (el) el.addEventListener("change", renderizarDashboard);
+    });
+  }
+  if (id === "tarefas") {
+    ["filtro-tarefas-status","filtro-tarefas-empresa","filtro-tarefas-categoria","filtro-tarefas-prioridade","filtro-tarefas-de","filtro-tarefas-ate"].forEach(elId => {
+      const el = document.getElementById(elId);
+      if (el) el.addEventListener("change", renderizarTabelaTarefas);
+    });
+  }
+  if (id === "categorias") {
+    document.getElementById("btn-nova-categoria").addEventListener("click", abrirNovaCategoria);
+  }
+  if (id === "agenda") {
+    document.getElementById("btn-nova-visita").addEventListener("click", abrirNovaVisita);
+    document.getElementById("btn-mes-anterior").addEventListener("click", () => mudarMesCalendario(-1));
+    document.getElementById("btn-mes-proximo").addEventListener("click", () => mudarMesCalendario(1));
+    const fEmpresa = document.getElementById("filtro-agenda-empresa");
+    if (fEmpresa) fEmpresa.addEventListener("change", renderizarAgendaPagina);
+  }
+}
 
 function getClienteById(id) { return todosClientes.find(c => c.id === id); }
+function getCategoriaById(id) { return todasCategorias.find(c => c.id === id); }
 
+/* ================= DASHBOARD ================= */
 function tarefasFiltradasDashboard() {
-  const empresa = document.getElementById("filtro-empresa").value;
-  const mes = document.getElementById("filtro-mes").value;
-  const ano = document.getElementById("filtro-ano").value;
+  const empresa = document.getElementById("filtro-empresa")?.value;
+  const mes = document.getElementById("filtro-mes")?.value;
+  const ano = document.getElementById("filtro-ano")?.value;
+  const categoria = document.getElementById("filtro-categoria-dash")?.value;
   return todasTarefas.filter(t => {
     if (empresa) {
       const cli = getClienteById(t.cliente_id);
       if (!cli || cli.empresa !== empresa) return false;
     }
+    if (categoria && t.categoria_id !== categoria) return false;
     if (t.data_prevista) {
       const d = new Date(t.data_prevista + "T00:00:00");
       if (ano && d.getFullYear() != ano) return false;
-      if (mes !== "" && d.getMonth() != mes) return false;
-    } else if (mes !== "" || ano) {
+      if (mes !== "" && mes !== undefined && d.getMonth() != mes) return false;
+    } else if ((mes !== "" && mes !== undefined) || ano) {
       return false;
     }
     return true;
   });
 }
 
-/* ================= DASHBOARD ================= */
 function renderizarDashboard() {
   const lista = tarefasFiltradasDashboard();
   const abertas = lista.filter(t => t.status === "aberta").length;
@@ -852,7 +1203,13 @@ function renderizarDashboard() {
 }
 
 function renderizarGraficoAnual(lista) {
-  const ano = document.getElementById("filtro-ano").value || new Date().getFullYear();
+  const canvasEl = document.getElementById("grafico-anual");
+  if (!canvasEl) return;
+  if (typeof Chart === "undefined") {
+    canvasEl.parentElement.innerHTML = `<div class="vazio">Não foi possível carregar a biblioteca de gráficos. Recarregue a página.</div>`;
+    return;
+  }
+  const ano = document.getElementById("filtro-ano")?.value || new Date().getFullYear();
   const abertasPorMes = Array(12).fill(0);
   const concluidasPorMes = Array(12).fill(0);
 
@@ -862,16 +1219,18 @@ function renderizarGraficoAnual(lista) {
     if (!base) return;
     const d = new Date(base + "T00:00:00");
     if (d.getFullYear() != ano) return;
-    const empresa = document.getElementById("filtro-empresa").value;
+    const empresa = document.getElementById("filtro-empresa")?.value;
     if (empresa) {
       const cli = getClienteById(t.cliente_id);
       if (!cli || cli.empresa !== empresa) return;
     }
+    const categoria = document.getElementById("filtro-categoria-dash")?.value;
+    if (categoria && t.categoria_id !== categoria) return;
     if (t.status === "concluida") concluidasPorMes[d.getMonth()]++;
     else abertasPorMes[d.getMonth()]++;
   });
 
-  const ctx = document.getElementById("grafico-anual").getContext("2d");
+  const ctx = canvasEl.getContext("2d");
   if (graficoAnual) graficoAnual.destroy();
   graficoAnual = new Chart(ctx, {
     type: "bar",
@@ -891,7 +1250,13 @@ function renderizarGraficoAnual(lista) {
 }
 
 function renderizarGraficoStatus(abertas, andamento, concluidas) {
-  const ctx = document.getElementById("grafico-status").getContext("2d");
+  const canvasEl = document.getElementById("grafico-status");
+  if (!canvasEl) return;
+  if (typeof Chart === "undefined") {
+    canvasEl.parentElement.innerHTML = `<div class="vazio">Não foi possível carregar a biblioteca de gráficos. Recarregue a página.</div>`;
+    return;
+  }
+  const ctx = canvasEl.getContext("2d");
   if (graficoStatus) graficoStatus.destroy();
   graficoStatus = new Chart(ctx, {
     type: "doughnut",
@@ -915,6 +1280,7 @@ function renderizarAgenda() {
     .slice(0, 8);
 
   const el = document.getElementById("agenda-lista");
+  if (!el) return;
   if (proximas.length === 0) {
     el.innerHTML = `<div class="vazio">Nenhuma tarefa agendada para os próximos dias.</div>`;
     return;
@@ -940,26 +1306,59 @@ function labelStatus(s) {
 function labelPrioridade(p) {
   return { baixa: "Baixa", media: "Média", alta: "Alta" }[p] || p;
 }
+function formatarTempo(segundos) {
+  segundos = segundos || 0;
+  const h = Math.floor(segundos / 3600);
+  const m = Math.floor((segundos % 3600) / 60);
+  const s = segundos % 60;
+  return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+}
 
 /* ================= TABELA DE TAREFAS ================= */
-function renderizarTabelaTarefas() {
-  const statusF = document.getElementById("filtro-tarefas-status").value;
+function tarefasFiltradasLista() {
+  const statusF = document.getElementById("filtro-tarefas-status")?.value;
   const empresaF = document.getElementById("filtro-tarefas-empresa")?.value;
-  let lista = [...todasTarefas];
+  const categoriaF = document.getElementById("filtro-tarefas-categoria")?.value;
+  const prioridadeF = document.getElementById("filtro-tarefas-prioridade")?.value;
+  const deF = document.getElementById("filtro-tarefas-de")?.value;
+  const ateF = document.getElementById("filtro-tarefas-ate")?.value;
+
+  let lista = todasTarefas.filter(t => usuarioAtual.tipo === "admin" ? t.aprovada !== false : true);
   if (statusF) lista = lista.filter(t => t.status === statusF);
   if (empresaF) lista = lista.filter(t => { const c = getClienteById(t.cliente_id); return c && c.empresa === empresaF; });
+  if (categoriaF) lista = lista.filter(t => t.categoria_id === categoriaF);
+  if (prioridadeF) lista = lista.filter(t => t.prioridade === prioridadeF);
+  if (deF) lista = lista.filter(t => t.data_prevista && t.data_prevista >= deF);
+  if (ateF) lista = lista.filter(t => t.data_prevista && t.data_prevista <= ateF);
   lista.sort((a,b) => (a.data_prevista || "9999").localeCompare(b.data_prevista || "9999"));
+  return lista;
+}
 
+function renderizarTabelaTarefas() {
+  const lista = tarefasFiltradasLista();
   const corpo = document.getElementById("tabela-tarefas-corpo");
+  if (!corpo) return;
   document.getElementById("tarefas-vazio").style.display = lista.length ? "none" : "block";
   corpo.innerHTML = lista.map(t => {
     const cli = getClienteById(t.cliente_id);
+    const cat = getCategoriaById(t.categoria_id);
     const prazo = t.data_prevista ? new Date(t.data_prevista + "T00:00:00").toLocaleDateString("pt-BR") : "—";
+    const inicio = t.data_inicio ? new Date(t.data_inicio + "T00:00:00").toLocaleDateString("pt-BR") : "—";
+    const rodando = !!cronometrosAtivos[t.id];
     return `
       <tr>
         <td><strong>${t.titulo}</strong>${t.descricao ? `<br><span style="color:var(--texto-suave);font-size:12px">${t.descricao}</span>` : ""}</td>
         ${usuarioAtual.tipo === "admin" ? `<td>${cli ? (cli.empresa || cli.nome) : "—"}</td>` : ""}
+        <td>${cat ? `<span class="chip-categoria" style="background:${cat.cor}">${cat.nome}</span>` : "—"}</td>
+        <td>${t.colaborador || "—"}</td>
+        <td>${inicio}</td>
         <td>${prazo}</td>
+        <td>
+          <div class="cronometro ${rodando ? 'rodando':''}" id="cronometro-${t.id}">
+            <button class="btn-icone ${rodando ? 'ativo':''}" onclick="alternarCronometro('${t.id}')" title="${rodando ? 'Pausar' : 'Iniciar'}">${rodando ? '⏸' : '▶'}</button>
+            <span id="tempo-${t.id}">${formatarTempo(t.tempo_gasto_segundos)}</span>
+          </div>
+        </td>
         <td>
           ${usuarioAtual.tipo === "admin"
             ? `<select class="select-status" onchange="alterarStatus('${t.id}', this.value)">
@@ -970,7 +1369,7 @@ function renderizarTabelaTarefas() {
             : `<span class="badge ${t.status}">${labelStatus(t.status)}</span>`
           }
         </td>
-        <td>${labelPrioridade(t.prioridade)}</td>
+        <td><span class="badge-prioridade ${t.prioridade}">${labelPrioridade(t.prioridade)}</span></td>
         <td>
           ${usuarioAtual.tipo === "admin" ? `
           <div class="acoes-linha">
@@ -982,14 +1381,67 @@ function renderizarTabelaTarefas() {
   }).join("");
 }
 
+/* ---- Cronômetro (item 3) ---- */
+window.alternarCronometro = async function(id) {
+  const t = todasTarefas.find(t => t.id === id);
+  if (!t) return;
+
+  if (cronometrosAtivos[id]) {
+    // Pausar: soma o tempo decorrido
+    clearInterval(cronometrosAtivos[id]);
+    delete cronometrosAtivos[id];
+    const inicioMs = new Date(t.cronometro_iniciado_em).getTime();
+    const decorridoSeg = Math.floor((Date.now() - inicioMs) / 1000);
+    const novoTotal = (t.tempo_gasto_segundos || 0) + decorridoSeg;
+    try {
+      await sb(`cap_tarefas?id=eq.${id}`, { method: "PATCH", body: JSON.stringify({ tempo_gasto_segundos: novoTotal, cronometro_iniciado_em: null }) });
+      t.tempo_gasto_segundos = novoTotal;
+      t.cronometro_iniciado_em = null;
+      renderizarTabelaTarefas();
+    } catch (err) { alert("Erro ao pausar o cronômetro: " + err.message); }
+  } else {
+    // Iniciar
+    const agora = new Date().toISOString();
+    try {
+      await sb(`cap_tarefas?id=eq.${id}`, { method: "PATCH", body: JSON.stringify({ cronometro_iniciado_em: agora }) });
+      t.cronometro_iniciado_em = agora;
+      renderizarTabelaTarefas();
+      const baseSeg = t.tempo_gasto_segundos || 0;
+      const inicioMs = Date.now();
+      cronometrosAtivos[id] = setInterval(() => {
+        const spanEl = document.getElementById(`tempo-${id}`);
+        if (spanEl) spanEl.textContent = formatarTempo(baseSeg + Math.floor((Date.now() - inicioMs) / 1000));
+      }, 1000);
+    } catch (err) { alert("Erro ao iniciar o cronômetro: " + err.message); }
+  }
+};
+
 async function alterarStatus(id, novoStatus) {
   const t = todasTarefas.find(t => t.id === id);
   try {
     const body = { status: novoStatus, atualizado_em: new Date().toISOString() };
-    if (novoStatus === "concluida") body.data_conclusao = new Date().toISOString().slice(0,10);
+    if (novoStatus === "concluida") {
+      // item 9: se data_conclusao estiver em branco, atribui hoje; calcula lead time
+      const hoje = new Date().toISOString().slice(0,10);
+      body.data_conclusao = t.data_conclusao || hoje;
+      if (t.data_inicio) {
+        const dIni = new Date(t.data_inicio + "T00:00:00");
+        const dFim = new Date(body.data_conclusao + "T00:00:00");
+        body.lead_time_dias = Math.max(0, Math.round((dFim - dIni) / 86400000));
+      }
+      // Se o cronômetro estava rodando, encerra e soma o tempo
+      if (t.cronometro_iniciado_em) {
+        const inicioMs = new Date(t.cronometro_iniciado_em).getTime();
+        const decorridoSeg = Math.floor((Date.now() - inicioMs) / 1000);
+        body.tempo_gasto_segundos = (t.tempo_gasto_segundos || 0) + decorridoSeg;
+        body.cronometro_iniciado_em = null;
+        if (cronometrosAtivos[id]) { clearInterval(cronometrosAtivos[id]); delete cronometrosAtivos[id]; }
+      }
+    }
     await sb(`cap_tarefas?id=eq.${id}`, { method: "PATCH", body: JSON.stringify(body) });
     Object.assign(t, body);
     renderizarDashboard();
+    renderizarTabelaTarefas();
   } catch (err) { alert("Erro ao atualizar status: " + err.message); }
 }
 
@@ -1003,40 +1455,48 @@ async function excluirTarefa(id) {
   } catch (err) { alert("Erro ao excluir: " + err.message); }
 }
 
+window.alterarStatus = alterarStatus;
+window.excluirTarefa = excluirTarefa;
+
 /* ================= MODAL TAREFA ================= */
-const modalTarefa = document.getElementById("modal-tarefa");
-document.getElementById("btn-flutuante").addEventListener("click", () => abrirNovaTarefa());
-document.getElementById("btn-cancelar-tarefa").addEventListener("click", () => modalTarefa.style.display = "none");
+document.getElementById("btn-cancelar-tarefa").addEventListener("click", () => document.getElementById("modal-tarefa").style.display = "none");
 
 function abrirNovaTarefa() {
+  popularSelectClienteTarefa();
+  popularSelectCategoriaTarefa();
   document.getElementById("modal-tarefa-titulo").textContent = "Nova tarefa";
   document.getElementById("tarefa-id").value = "";
   document.getElementById("tarefa-titulo").value = "";
   document.getElementById("tarefa-descricao").value = "";
+  document.getElementById("tarefa-categoria").value = "";
+  document.getElementById("tarefa-colaborador").value = "";
+  document.getElementById("tarefa-data-inicio").value = "";
   document.getElementById("tarefa-data").value = "";
   document.getElementById("tarefa-prioridade").value = "media";
   document.getElementById("tarefa-status").value = "aberta";
-  if (usuarioAtual.tipo !== "admin") {
-    // cliente comum não deveria criar tarefas normalmente, mas caso queira solicitar:
-  }
-  modalTarefa.style.display = "flex";
+  document.getElementById("campo-tarefa-cliente").style.display = usuarioAtual.tipo === "admin" ? "block" : "none";
+  document.getElementById("modal-tarefa").style.display = "flex";
 }
 
 window.abrirEdicaoTarefa = function(id) {
   const t = todasTarefas.find(t => t.id === id);
   if (!t) return;
+  popularSelectClienteTarefa();
+  popularSelectCategoriaTarefa();
   document.getElementById("modal-tarefa-titulo").textContent = "Editar tarefa";
   document.getElementById("tarefa-id").value = t.id;
   document.getElementById("tarefa-cliente").value = t.cliente_id;
   document.getElementById("tarefa-titulo").value = t.titulo;
   document.getElementById("tarefa-descricao").value = t.descricao || "";
+  document.getElementById("tarefa-categoria").value = t.categoria_id || "";
+  document.getElementById("tarefa-colaborador").value = t.colaborador || "";
+  document.getElementById("tarefa-data-inicio").value = t.data_inicio || "";
   document.getElementById("tarefa-data").value = t.data_prevista || "";
   document.getElementById("tarefa-prioridade").value = t.prioridade;
   document.getElementById("tarefa-status").value = t.status;
-  modalTarefa.style.display = "flex";
+  document.getElementById("campo-tarefa-cliente").style.display = "block";
+  document.getElementById("modal-tarefa").style.display = "flex";
 };
-window.alterarStatus = alterarStatus;
-window.excluirTarefa = excluirTarefa;
 
 document.getElementById("btn-salvar-tarefa").addEventListener("click", async () => {
   const id = document.getElementById("tarefa-id").value;
@@ -1046,16 +1506,30 @@ document.getElementById("btn-salvar-tarefa").addEventListener("click", async () 
   if (!clienteId) { alert("Selecione um cliente."); return; }
 
   const status = document.getElementById("tarefa-status").value;
+  const dataInicio = document.getElementById("tarefa-data-inicio").value || null;
+  const dataPrevista = document.getElementById("tarefa-data").value || null;
+
   const body = {
     cliente_id: clienteId,
     titulo,
     descricao: document.getElementById("tarefa-descricao").value.trim(),
-    data_prevista: document.getElementById("tarefa-data").value || null,
+    categoria_id: document.getElementById("tarefa-categoria").value || null,
+    colaborador: document.getElementById("tarefa-colaborador").value.trim(),
+    data_inicio: dataInicio,
+    data_prevista: dataPrevista,
     prioridade: document.getElementById("tarefa-prioridade").value,
     status,
     atualizado_em: new Date().toISOString()
   };
-  if (status === "concluida") body.data_conclusao = new Date().toISOString().slice(0,10);
+  if (status === "concluida") {
+    const hoje = new Date().toISOString().slice(0,10);
+    body.data_conclusao = hoje; // item 9
+    if (dataInicio) {
+      const dIni = new Date(dataInicio + "T00:00:00");
+      const dFim = new Date(hoje + "T00:00:00");
+      body.lead_time_dias = Math.max(0, Math.round((dFim - dIni) / 86400000));
+    }
+  }
 
   try {
     if (id) {
@@ -1063,14 +1537,303 @@ document.getElementById("btn-salvar-tarefa").addEventListener("click", async () 
       const idx = todasTarefas.findIndex(t => t.id === id);
       todasTarefas[idx] = atualizado[0];
     } else {
+      body.aprovada = true;
+      body.criado_por_cliente = false;
       const criado = await sb(`cap_tarefas`, { method: "POST", body: JSON.stringify(body) });
       todasTarefas.unshift(criado[0]);
     }
-    modalTarefa.style.display = "none";
+    document.getElementById("modal-tarefa").style.display = "none";
     renderizarTabelaTarefas();
     renderizarDashboard();
   } catch (err) {
     alert("Erro ao salvar tarefa: " + err.message);
+  }
+});
+
+/* ================= SOLICITAÇÕES (item 5) ================= */
+function atualizarContadorSolicitacoes() {
+  const badge = document.getElementById("contador-solicitacoes");
+  if (!badge) return;
+  const pendentes = todasTarefas.filter(t => t.criado_por_cliente && t.aprovada === false).length;
+  if (pendentes > 0) {
+    badge.textContent = pendentes;
+    badge.style.display = "inline-block";
+  } else {
+    badge.style.display = "none";
+  }
+}
+
+function renderizarSolicitacoes() {
+  const lista = todasTarefas.filter(t => t.criado_por_cliente && t.aprovada === false);
+  const el = document.getElementById("lista-solicitacoes");
+  document.getElementById("solicitacoes-vazio").style.display = lista.length ? "none" : "block";
+  el.innerHTML = lista.map(t => {
+    const cli = getClienteById(t.cliente_id);
+    const prazo = t.data_prevista ? new Date(t.data_prevista + "T00:00:00").toLocaleDateString("pt-BR") : "Sem prazo definido";
+    return `
+      <div class="solicitacao-card">
+        <div class="solicitacao-info">
+          <strong>${t.titulo}</strong>
+          <span>${cli ? (cli.empresa || cli.nome) : "Cliente"} • Prioridade ${labelPrioridade(t.prioridade)} • Prazo: ${prazo}</span>
+          ${t.descricao ? `<div style="margin-top:4px;font-size:12.5px;color:var(--texto-suave)">${t.descricao}</div>` : ""}
+        </div>
+        <div class="solicitacao-acoes">
+          <button class="btn btn-outline btn-sm" onclick="rejeitarSolicitacao('${t.id}')">Rejeitar</button>
+          <button class="btn btn-laranja btn-sm" onclick="aprovarSolicitacao('${t.id}')">Aprovar</button>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+window.aprovarSolicitacao = async function(id) {
+  try {
+    await sb(`cap_tarefas?id=eq.${id}`, { method: "PATCH", body: JSON.stringify({ aprovada: true }) });
+    const t = todasTarefas.find(t => t.id === id);
+    t.aprovada = true;
+    renderizarSolicitacoes();
+    atualizarContadorSolicitacoes();
+  } catch (err) { alert("Erro ao aprovar: " + err.message); }
+};
+
+window.rejeitarSolicitacao = async function(id) {
+  if (!confirm("Rejeitar e excluir esta solicitação?")) return;
+  try {
+    await sb(`cap_tarefas?id=eq.${id}`, { method: "DELETE" });
+    todasTarefas = todasTarefas.filter(t => t.id !== id);
+    renderizarSolicitacoes();
+    atualizarContadorSolicitacoes();
+  } catch (err) { alert("Erro ao rejeitar: " + err.message); }
+};
+
+document.getElementById("btn-cancelar-solicitacao").addEventListener("click", () => document.getElementById("modal-solicitacao").style.display = "none");
+document.getElementById("btn-enviar-solicitacao").addEventListener("click", async () => {
+  const titulo = document.getElementById("solicitacao-titulo").value.trim();
+  if (!titulo) { alert("Descreva o que você precisa."); return; }
+  const body = {
+    cliente_id: usuarioAtual.id,
+    titulo,
+    descricao: document.getElementById("solicitacao-descricao").value.trim(),
+    prioridade: document.getElementById("solicitacao-prioridade").value,
+    data_prevista: document.getElementById("solicitacao-data").value || null,
+    status: "aberta",
+    criado_por_cliente: true,
+    aprovada: false
+  };
+  try {
+    const criado = await sb(`cap_tarefas`, { method: "POST", body: JSON.stringify(body) });
+    todasTarefas.unshift(criado[0]);
+    document.getElementById("modal-solicitacao").style.display = "none";
+    alert("Solicitação enviada! A CAP Consultoria vai analisar em breve.");
+  } catch (err) {
+    alert("Erro ao enviar solicitação: " + err.message);
+  }
+});
+
+/* ================= CATEGORIAS (item 2) ================= */
+function renderizarTabelaCategorias() {
+  const corpo = document.getElementById("tabela-categorias-corpo");
+  document.getElementById("categorias-vazio").style.display = todasCategorias.length ? "none" : "block";
+  corpo.innerHTML = todasCategorias.map(c => `
+    <tr>
+      <td><strong>${c.nome}</strong></td>
+      <td><span class="chip-categoria" style="background:${c.cor}">${c.cor}</span></td>
+      <td><button class="btn-icone perigo" onclick="excluirCategoria('${c.id}')" title="Excluir">🗑</button></td>
+    </tr>`).join("");
+}
+
+function abrirNovaCategoria() {
+  document.getElementById("categoria-nome").value = "";
+  document.getElementById("categoria-cor").value = "#fe6e0b";
+  document.getElementById("modal-categoria").style.display = "flex";
+}
+document.getElementById("btn-cancelar-categoria")?.addEventListener("click", () => document.getElementById("modal-categoria").style.display = "none");
+
+window.excluirCategoria = async function(id) {
+  if (!confirm("Excluir esta categoria?")) return;
+  try {
+    await sb(`cap_categorias?id=eq.${id}`, { method: "DELETE" });
+    todasCategorias = todasCategorias.filter(c => c.id !== id);
+    renderizarTabelaCategorias();
+  } catch (err) { alert("Erro ao excluir categoria: " + err.message); }
+};
+
+document.addEventListener("click", async (e) => {
+  if (e.target && e.target.id === "btn-salvar-categoria") {
+    const nome = document.getElementById("categoria-nome").value.trim();
+    const cor = document.getElementById("categoria-cor").value;
+    if (!nome) { alert("Informe o nome da categoria."); return; }
+    try {
+      const criado = await sb(`cap_categorias`, { method: "POST", body: JSON.stringify({ nome, cor }) });
+      todasCategorias.push(criado[0]);
+      todasCategorias.sort((a,b) => a.nome.localeCompare(b.nome));
+      renderizarTabelaCategorias();
+      document.getElementById("modal-categoria").style.display = "none";
+    } catch (err) {
+      alert("Erro ao cadastrar categoria (talvez já exista uma com esse nome): " + err.message);
+    }
+  }
+});
+
+/* ================= AGENDA DE VISITAS (item 7) ================= */
+function visitasFiltradas() {
+  const empresaF = document.getElementById("filtro-agenda-empresa")?.value;
+  let lista = [...todasVisitas];
+  if (empresaF) lista = lista.filter(v => { const c = getClienteById(v.cliente_id); return c && c.empresa === empresaF; });
+  return lista;
+}
+
+function renderizarAgendaPagina() {
+  document.getElementById("agenda-sub").textContent = usuarioAtual.tipo === "admin"
+    ? "Calendário completo de visitas — filtre por empresa se quiser"
+    : "Suas visitas agendadas com a CAP Consultoria";
+  renderizarCalendario();
+  renderizarListaVisitas();
+}
+
+function mudarMesCalendario(delta) {
+  calendarioMesAtual += delta;
+  if (calendarioMesAtual > 11) { calendarioMesAtual = 0; calendarioAnoAtual++; }
+  if (calendarioMesAtual < 0) { calendarioMesAtual = 11; calendarioAnoAtual--; }
+  renderizarCalendario();
+}
+
+function renderizarCalendario() {
+  document.getElementById("calendario-titulo").textContent = `${MESES_LONGO[calendarioMesAtual]} de ${calendarioAnoAtual}`;
+  const primeiroDia = new Date(calendarioAnoAtual, calendarioMesAtual, 1);
+  const ultimoDia = new Date(calendarioAnoAtual, calendarioMesAtual + 1, 0);
+  const diaSemanaInicio = primeiroDia.getDay();
+  const totalDias = ultimoDia.getDate();
+
+  const lista = visitasFiltradas();
+  const visitasPorDia = {};
+  lista.forEach(v => {
+    const d = new Date(v.data_visita + "T00:00:00");
+    if (d.getFullYear() === calendarioAnoAtual && d.getMonth() === calendarioMesAtual) {
+      const dia = d.getDate();
+      (visitasPorDia[dia] = visitasPorDia[dia] || []).push(v);
+    }
+  });
+
+  const hoje = new Date();
+  let html = "";
+  for (let i = 0; i < diaSemanaInicio; i++) html += `<div class="calendario-dia outro-mes"></div>`;
+  for (let dia = 1; dia <= totalDias; dia++) {
+    const ehHoje = hoje.getFullYear() === calendarioAnoAtual && hoje.getMonth() === calendarioMesAtual && hoje.getDate() === dia;
+    const eventos = visitasPorDia[dia] || [];
+    html += `<div class="calendario-dia ${ehHoje ? 'hoje':''}" title="${eventos.map(v=>v.titulo).join(', ')}">
+      <div class="num-dia">${dia}</div>
+      <div>${eventos.map(() => `<span class="ponto-evento"></span>`).join("")}</div>
+    </div>`;
+  }
+  document.getElementById("calendario-grid").innerHTML = html;
+}
+
+function renderizarListaVisitas() {
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const lista = visitasFiltradas()
+    .filter(v => new Date(v.data_visita + "T00:00:00") >= hoje)
+    .sort((a,b) => a.data_visita.localeCompare(b.data_visita))
+    .slice(0, 10);
+  const el = document.getElementById("lista-visitas");
+  document.getElementById("visitas-vazio").style.display = lista.length ? "none" : "block";
+  el.innerHTML = lista.map(v => {
+    const d = new Date(v.data_visita + "T00:00:00");
+    const cli = getClienteById(v.cliente_id);
+    return `
+      <div class="agenda-dia">
+        <div class="agenda-data"><div class="num">${d.getDate()}</div><div class="mes">${MESES[d.getMonth()]}</div></div>
+        <div class="agenda-info">
+          <strong>${v.titulo}</strong>
+          <span>${usuarioAtual.tipo === "admin" && cli ? (cli.empresa || cli.nome) + " • " : ""}${v.hora_inicio ? v.hora_inicio.slice(0,5) : ""}${v.hora_fim ? " às " + v.hora_fim.slice(0,5) : ""}${v.local ? " • " + v.local : ""}</span>
+          <div class="badge ${v.status}">${v.status === 'agendada' ? 'Agendada' : v.status === 'realizada' ? 'Realizada' : 'Cancelada'}</div>
+        </div>
+        ${usuarioAtual.tipo === "admin" ? `
+        <div class="acoes-linha">
+          <button class="btn-icone" onclick="abrirEdicaoVisita('${v.id}')" title="Editar">✎</button>
+          <button class="btn-icone perigo" onclick="excluirVisita('${v.id}')" title="Excluir">🗑</button>
+        </div>` : ""}
+      </div>`;
+  }).join("");
+}
+
+function abrirNovaVisita() {
+  popularSelectClienteTarefa();
+  document.getElementById("modal-visita-titulo").textContent = "Agendar visita";
+  document.getElementById("visita-id").value = "";
+  document.getElementById("visita-titulo").value = "";
+  document.getElementById("visita-descricao").value = "";
+  document.getElementById("visita-data").value = "";
+  document.getElementById("visita-hora-inicio").value = "";
+  document.getElementById("visita-hora-fim").value = "";
+  document.getElementById("visita-local").value = "";
+  document.getElementById("visita-responsavel").value = "";
+  document.getElementById("visita-status").value = "agendada";
+  document.getElementById("campo-visita-cliente").style.display = usuarioAtual.tipo === "admin" ? "block" : "none";
+  document.getElementById("modal-visita").style.display = "flex";
+}
+
+window.abrirEdicaoVisita = function(id) {
+  const v = todasVisitas.find(v => v.id === id);
+  if (!v) return;
+  popularSelectClienteTarefa();
+  document.getElementById("modal-visita-titulo").textContent = "Editar visita";
+  document.getElementById("visita-id").value = v.id;
+  document.getElementById("visita-cliente").value = v.cliente_id;
+  document.getElementById("visita-titulo").value = v.titulo;
+  document.getElementById("visita-descricao").value = v.descricao || "";
+  document.getElementById("visita-data").value = v.data_visita || "";
+  document.getElementById("visita-hora-inicio").value = v.hora_inicio || "";
+  document.getElementById("visita-hora-fim").value = v.hora_fim || "";
+  document.getElementById("visita-local").value = v.local || "";
+  document.getElementById("visita-responsavel").value = v.responsavel || "";
+  document.getElementById("visita-status").value = v.status;
+  document.getElementById("modal-visita").style.display = "flex";
+};
+
+window.excluirVisita = async function(id) {
+  if (!confirm("Excluir esta visita?")) return;
+  try {
+    await sb(`cap_visitas?id=eq.${id}`, { method: "DELETE" });
+    todasVisitas = todasVisitas.filter(v => v.id !== id);
+    renderizarAgendaPagina();
+  } catch (err) { alert("Erro ao excluir visita: " + err.message); }
+};
+
+document.addEventListener("click", async (e) => {
+  if (e.target && e.target.id === "btn-cancelar-visita") {
+    document.getElementById("modal-visita").style.display = "none";
+  }
+  if (e.target && e.target.id === "btn-salvar-visita") {
+    const id = document.getElementById("visita-id").value;
+    const titulo = document.getElementById("visita-titulo").value.trim();
+    const data = document.getElementById("visita-data").value;
+    if (!titulo || !data) { alert("Informe ao menos título e data da visita."); return; }
+    const clienteId = usuarioAtual.tipo === "admin" ? document.getElementById("visita-cliente").value : usuarioAtual.id;
+    const body = {
+      cliente_id: clienteId,
+      titulo,
+      descricao: document.getElementById("visita-descricao").value.trim(),
+      data_visita: data,
+      hora_inicio: document.getElementById("visita-hora-inicio").value || null,
+      hora_fim: document.getElementById("visita-hora-fim").value || null,
+      local: document.getElementById("visita-local").value.trim(),
+      responsavel: document.getElementById("visita-responsavel").value.trim(),
+      status: document.getElementById("visita-status").value
+    };
+    try {
+      if (id) {
+        const atualizado = await sb(`cap_visitas?id=eq.${id}`, { method: "PATCH", body: JSON.stringify(body) });
+        const idx = todasVisitas.findIndex(v => v.id === id);
+        todasVisitas[idx] = atualizado[0];
+      } else {
+        const criado = await sb(`cap_visitas`, { method: "POST", body: JSON.stringify(body) });
+        todasVisitas.push(criado[0]);
+      }
+      document.getElementById("modal-visita").style.display = "none";
+      renderizarAgendaPagina();
+    } catch (err) {
+      alert("Erro ao salvar visita: " + err.message);
+    }
   }
 });
 
@@ -1101,54 +1864,64 @@ window.alternarAtivoCliente = async function(id, ativoAtual) {
   } catch (err) { alert("Erro: " + err.message); }
 };
 
-const modalCliente = document.getElementById("modal-cliente");
-document.getElementById("btn-cancelar-cliente").addEventListener("click", () => modalCliente.style.display = "none");
+document.getElementById("btn-cancelar-cliente")?.addEventListener("click", () => document.getElementById("modal-cliente").style.display = "none");
 
-// Botão flutuante contextual: se estiver na página de clientes, abre modal de cliente
+document.addEventListener("click", async (e) => {
+  if (e.target && e.target.id === "btn-salvar-cliente") {
+    const nome = document.getElementById("cliente-nome").value.trim();
+    const email = document.getElementById("cliente-email").value.trim().toLowerCase();
+    const senha = document.getElementById("cliente-senha").value;
+    if (!nome || !email || !senha) { alert("Preencha nome, e-mail e senha."); return; }
+    try {
+      const criado = await sb(`cap_usuarios`, {
+        method: "POST",
+        body: JSON.stringify({
+          nome, email, senha,
+          tipo: "cliente",
+          empresa: document.getElementById("cliente-empresa").value.trim(),
+          telefone: document.getElementById("cliente-telefone").value.trim(),
+          ativo: true
+        })
+      });
+      todosClientes.push(criado[0]);
+      popularFiltroEmpresas();
+      renderizarTabelaClientes();
+      document.getElementById("modal-cliente").style.display = "none";
+    } catch (err) {
+      if (err.message.includes("duplicate") || err.message.includes("23505")) {
+        alert("Já existe um cliente cadastrado com esse e-mail.");
+      } else {
+        alert("Erro ao cadastrar cliente: " + err.message);
+      }
+    }
+  }
+});
+
+/* ================= BOTÃO FLUTUANTE CONTEXTUAL ================= */
 document.getElementById("btn-flutuante").addEventListener("click", () => {
-  const paginaAtiva = document.querySelector(".pagina.ativa").id;
+  const paginaAtiva = document.querySelector(".pagina")?.id;
   if (paginaAtiva === "pagina-clientes") {
     document.getElementById("cliente-nome").value = "";
     document.getElementById("cliente-empresa").value = "";
     document.getElementById("cliente-email").value = "";
     document.getElementById("cliente-senha").value = "";
     document.getElementById("cliente-telefone").value = "";
-    modalCliente.style.display = "flex";
+    document.getElementById("modal-cliente").style.display = "flex";
+  } else if (paginaAtiva === "pagina-agenda") {
+    abrirNovaVisita();
+  } else if (paginaAtiva === "pagina-categorias") {
+    abrirNovaCategoria();
+  } else if (usuarioAtual.tipo === "admin") {
+    abrirNovaTarefa();
+  } else {
+    // cliente comum: botão flutuante abre solicitação de nova tarefa
+    document.getElementById("solicitacao-titulo").value = "";
+    document.getElementById("solicitacao-descricao").value = "";
+    document.getElementById("solicitacao-prioridade").value = "media";
+    document.getElementById("solicitacao-data").value = "";
+    document.getElementById("modal-solicitacao").style.display = "flex";
   }
 });
-
-document.getElementById("btn-salvar-cliente").addEventListener("click", async () => {
-  const nome = document.getElementById("cliente-nome").value.trim();
-  const email = document.getElementById("cliente-email").value.trim().toLowerCase();
-  const senha = document.getElementById("cliente-senha").value;
-  if (!nome || !email || !senha) { alert("Preencha nome, e-mail e senha."); return; }
-
-  try {
-    const criado = await sb(`cap_usuarios`, {
-      method: "POST",
-      body: JSON.stringify({
-        nome, email, senha,
-        tipo: "cliente",
-        empresa: document.getElementById("cliente-empresa").value.trim(),
-        telefone: document.getElementById("cliente-telefone").value.trim(),
-        ativo: true
-      })
-    });
-    todosClientes.push(criado[0]);
-    popularFiltroEmpresas();
-    popularSelectClienteTarefa();
-    renderizarTabelaClientes();
-    modalCliente.style.display = "none";
-  } catch (err) {
-    if (err.message.includes("duplicate") || err.message.includes("23505")) {
-      alert("Já existe um cliente cadastrado com esse e-mail.");
-    } else {
-      alert("Erro ao cadastrar cliente: " + err.message);
-    }
-  }
-});
-
-// Fecha botão flutuante em página de clientes deve mudar o ícone/título (opcional, mantido simples)
 </script>
 </body>
 </html>
