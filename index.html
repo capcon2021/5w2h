@@ -4,6 +4,49 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>CAP Consultoria | Painel de Tarefas</title>
+<script>
+/* ================= REDE DE SEGURANÇA GLOBAL ================= */
+// Captura QUALQUER erro JavaScript não tratado em qualquer parte do app
+// e mostra na tela imediatamente, de forma bem visível, sem precisar
+// abrir o console. Isso roda antes de qualquer outro script do sistema.
+window.__errosCapturados = [];
+window.addEventListener("error", function (evento) {
+  window.__errosCapturados.push({
+    tipo: "erro",
+    mensagem: evento.message,
+    arquivo: evento.filename,
+    linha: evento.lineno,
+    coluna: evento.colno,
+    hora: new Date().toLocaleTimeString()
+  });
+  mostrarPainelErroGlobal();
+});
+window.addEventListener("unhandledrejection", function (evento) {
+  window.__errosCapturados.push({
+    tipo: "promise rejeitada",
+    mensagem: evento.reason && evento.reason.message ? evento.reason.message : String(evento.reason),
+    hora: new Date().toLocaleTimeString()
+  });
+  mostrarPainelErroGlobal();
+});
+
+function mostrarPainelErroGlobal() {
+  let painel = document.getElementById("painel-erro-global");
+  if (!painel) {
+    painel = document.createElement("div");
+    painel.id = "painel-erro-global";
+    painel.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;background:#3d0d0a;color:#ffd9d5;padding:14px 16px;font-family:monospace;font-size:12px;max-height:50vh;overflow-y:auto;box-shadow:0 4px 20px rgba(0,0,0,0.4);";
+    document.body.appendChild(painel);
+  }
+  const linhas = window.__errosCapturados.map(function (e, i) {
+    return "[" + e.hora + "] (" + e.tipo + ") " + e.mensagem + (e.linha ? " — linha " + e.linha : "");
+  });
+  painel.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+    '<strong style="color:#ff8a80;">⚠️ ' + window.__errosCapturados.length + ' erro(s) detectado(s) — envie este texto ao suporte:</strong>' +
+    '<button onclick="document.getElementById(\'painel-erro-global\').remove()" style="background:none;border:1px solid #ff8a80;color:#ff8a80;border-radius:6px;padding:2px 10px;cursor:pointer;">Fechar</button>' +
+    '</div><pre style="white-space:pre-wrap;margin:0;">' + linhas.join("\n") + '</pre>';
+}
+</script>
 <style>
 :root{
   --carvao-900:#1c1d1f;
@@ -2302,6 +2345,52 @@ document.getElementById("btn-flutuante").addEventListener("click", () => {
     document.getElementById("modal-solicitacao").style.display = "flex";
   }
 });
+
+/* ================= WATCHDOG DE TELA VAZIA =================
+   Alguns segundos após o carregamento, verifica se a tela realmente
+   mostra conteúdo. Se o app estiver "aberto" mas sem nada visível
+   (nem login, nem dashboard com cards), mostra um relatório completo
+   do estado interno para diagnóstico — mesmo sem nenhum erro JS. */
+setTimeout(function () {
+  const telaLoginEl = document.getElementById("tela-login");
+  const appEl = document.getElementById("app");
+  const loginVisivel = telaLoginEl && window.getComputedStyle(telaLoginEl).display !== "none";
+  const appVisivel = appEl && window.getComputedStyle(appEl).display !== "none";
+  const conteudoEl = document.getElementById("conteudo");
+  const conteudoTemCards = conteudoEl && conteudoEl.querySelectorAll(".card, .card-indicador").length > 0;
+
+  if (appVisivel && !conteudoTemCards) {
+    const relatorio = [];
+    relatorio.push("=== DIAGNÓSTICO AUTOMÁTICO (tela sem conteúdo detectada) ===");
+    relatorio.push("Hora: " + new Date().toLocaleTimeString());
+    relatorio.push("Login visível (real): " + loginVisivel);
+    relatorio.push("App visível (real): " + appVisivel);
+    relatorio.push("tela-login style.display (inline): '" + (telaLoginEl ? telaLoginEl.style.display : "elemento não existe") + "'");
+    relatorio.push("app style.display (inline): '" + (appEl ? appEl.style.display : "elemento não existe") + "'");
+    relatorio.push("usuarioAtual definido: " + (typeof usuarioAtual !== "undefined" && usuarioAtual !== null));
+    relatorio.push("Tamanho do HTML em #conteudo: " + (conteudoEl ? conteudoEl.innerHTML.length : "elemento não existe"));
+    relatorio.push("todasTarefas definido: " + (typeof todasTarefas !== "undefined" ? todasTarefas.length + " item(ns)" : "não definido"));
+    relatorio.push("todosClientes definido: " + (typeof todosClientes !== "undefined" ? todosClientes.length + " item(ns)" : "não definido"));
+    relatorio.push("Chart.js carregado: " + (typeof Chart !== "undefined"));
+    relatorio.push("localStorage cap_sessao: " + (localStorage.getItem("cap_sessao") ? "existe (tamanho " + localStorage.getItem("cap_sessao").length + ")" : "não existe"));
+    relatorio.push("Erros JS capturados até agora: " + window.__errosCapturados.length);
+    window.__errosCapturados.forEach(function (e) {
+      relatorio.push("  - [" + e.hora + "] (" + e.tipo + ") " + e.mensagem);
+    });
+
+    let painel = document.getElementById("painel-erro-global");
+    if (!painel) {
+      painel = document.createElement("div");
+      painel.id = "painel-erro-global";
+      painel.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;background:#3d0d0a;color:#ffd9d5;padding:14px 16px;font-family:monospace;font-size:12px;max-height:60vh;overflow-y:auto;box-shadow:0 4px 20px rgba(0,0,0,0.4);";
+      document.body.appendChild(painel);
+    }
+    painel.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+      '<strong style="color:#ff8a80;">⚠️ Diagnóstico automático — copie e envie este texto:</strong>' +
+      '<button onclick="document.getElementById(\'painel-erro-global\').remove()" style="background:none;border:1px solid #ff8a80;color:#ff8a80;border-radius:6px;padding:2px 10px;cursor:pointer;">Fechar</button>' +
+      '</div><pre style="white-space:pre-wrap;margin:0;">' + relatorio.join("\n") + '</pre>';
+  }
+}, 4000);
 </script>
 </body>
 </html>
