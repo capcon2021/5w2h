@@ -948,6 +948,24 @@ async function sb(path, opts = {}) {
   return text ? JSON.parse(text) : null;
 }
 
+/* ================= PING (mantém o projeto Supabase ativo) =================
+   Projetos gratuitos do Supabase pausam automaticamente após um período
+   sem tráfego. Este ping faz uma consulta mínima e periódica para contar
+   como atividade e evitar a pausa, enquanto a página estiver aberta —
+   seja na tela de login ou já logado no sistema. */
+async function pingSupabase() {
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/cap_usuarios?select=id&limit=1`, {
+      headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
+    });
+    console.log("Ping Supabase OK -", new Date().toLocaleTimeString());
+  } catch (e) {
+    console.warn("Ping Supabase falhou (sem rede ou projeto indisponível):", e.message);
+  }
+}
+pingSupabase(); // ping imediato ao abrir a página
+setInterval(pingSupabase, 4 * 60 * 60 * 1000); // repete a cada 4 horas enquanto a aba ficar aberta
+
 /* ================= ESTADO ================= */
 let usuarioAtual = null;
 let todosClientes = [];
@@ -1105,21 +1123,32 @@ function irParaPagina(id) {
   const titulos = { dashboard: "Painel geral", tarefas: "Tarefas", solicitacoes: "Solicitações", categorias: "Categorias", agenda: "Agenda de visitas", clientes: "Clientes" };
   document.getElementById("topbar-sub").textContent = titulos[id] || "";
 
-  try {
-    ajustarVisibilidadePorPerfil(id);
-    ligarEventosPagina(id);
+  // Cada etapa roda isoladamente: um erro em uma delas não impede as outras,
+  // e qualquer falha aparece visivelmente na tela em vez de deixá-la em branco.
+  const etapas = [
+    ["preferências de perfil", () => ajustarVisibilidadePorPerfil(id)],
+    ["eventos da página", () => ligarEventosPagina(id)],
+    ["conteúdo da página", () => {
+      if (id === "dashboard") renderizarDashboard();
+      if (id === "tarefas") renderizarTabelaTarefas();
+      if (id === "solicitacoes") renderizarSolicitacoes();
+      if (id === "categorias") renderizarTabelaCategorias();
+      if (id === "agenda") renderizarAgendaPagina();
+      if (id === "clientes") renderizarTabelaClientes();
+    }],
+    ["contador de solicitações", () => atualizarContadorSolicitacoes()],
+  ];
 
-    if (id === "dashboard") renderizarDashboard();
-    if (id === "tarefas") renderizarTabelaTarefas();
-    if (id === "solicitacoes") renderizarSolicitacoes();
-    if (id === "categorias") renderizarTabelaCategorias();
-    if (id === "agenda") renderizarAgendaPagina();
-    if (id === "clientes") renderizarTabelaClientes();
-
-    atualizarContadorSolicitacoes();
-  } catch (err) {
-    console.error(`Erro ao renderizar a página "${id}":`, err);
-    conteudo.insertAdjacentHTML("beforeend", `<div class="card"><div class="vazio">Não foi possível carregar completamente esta página. Detalhe técnico: ${err.message}</div></div>`);
+  for (const [nomeEtapa, executar] of etapas) {
+    try {
+      executar();
+    } catch (err) {
+      console.error(`Erro ao processar "${nomeEtapa}" na página "${id}":`, err);
+      conteudo.insertAdjacentHTML("afterbegin", `<div class="card" style="border:1.5px solid var(--vermelho);background:#fdecec;">
+        <div style="color:var(--vermelho);font-weight:700;font-size:13.5px;margin-bottom:4px;">⚠️ Não foi possível carregar: ${nomeEtapa}</div>
+        <div style="font-size:12.5px;color:#8a3530;">Detalhe técnico (envie este texto ao suporte se persistir): ${err.message}</div>
+      </div>`);
+    }
   }
 }
 
@@ -1288,7 +1317,8 @@ function tarefasFiltradasDashboard() {
     }
     if (categoria && t.categoria_id !== categoria) return false;
     if (t.data_prevista) {
-      const d = new Date(t.data_prevista + "T00:00:00");
+      const d = parseDataSegura(t.data_prevista);
+      if (!d) return true; // data malformada: não filtra por mês/ano, mas não derruba a tela
       if (ano && d.getFullYear() != ano) return false;
       if (mes !== "" && mes !== undefined && d.getMonth() != mes) return false;
     } else if ((mes !== "" && mes !== undefined) || ano) {
@@ -1312,9 +1342,9 @@ function renderizarDashboard() {
     <div class="card-indicador verde"><div class="valor">${concluidas}</div><div class="label">Concluídas</div></div>
   `;
 
-  renderizarGraficoAnual(lista);
-  renderizarGraficoStatus(abertas, andamento, concluidas);
-  renderizarAgenda();
+  try { renderizarGraficoAnual(lista); } catch (err) { console.error("Erro no gráfico anual:", err); }
+  try { renderizarGraficoStatus(abertas, andamento, concluidas); } catch (err) { console.error("Erro no gráfico de status:", err); }
+  try { renderizarAgenda(); } catch (err) { console.error("Erro na agenda do dashboard:", err); }
 }
 
 function renderizarGraficoAnual(lista) {
@@ -1332,7 +1362,8 @@ function renderizarGraficoAnual(lista) {
     let base = t.data_prevista;
     if (t.status === "concluida" && t.data_conclusao) base = t.data_conclusao;
     if (!base) return;
-    const d = new Date(base + "T00:00:00");
+    const d = parseDataSegura(base);
+    if (!d) return;
     if (d.getFullYear() != ano) return;
     const empresa = document.getElementById("filtro-empresa")?.value;
     if (empresa) {
@@ -1390,8 +1421,8 @@ function renderizarAgenda() {
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   const proximas = todasTarefas
     .filter(t => t.data_prevista && t.status !== "concluida")
-    .filter(t => new Date(t.data_prevista + "T00:00:00") >= hoje)
-    .sort((a,b) => new Date(a.data_prevista) - new Date(b.data_prevista))
+    .filter(t => { const d = parseDataSegura(t.data_prevista); return d && d >= hoje; })
+    .sort((a,b) => (a.data_prevista || "").localeCompare(b.data_prevista || ""))
     .slice(0, 8);
 
   const el = document.getElementById("agenda-lista");
@@ -1401,18 +1432,31 @@ function renderizarAgenda() {
     return;
   }
   el.innerHTML = proximas.map(t => {
-    const d = new Date(t.data_prevista + "T00:00:00");
+    const d = parseDataSegura(t.data_prevista);
     const cli = getClienteById(t.cliente_id);
     return `
       <div class="agenda-dia">
-        <div class="agenda-data"><div class="num">${d.getDate()}</div><div class="mes">${MESES[d.getMonth()]}</div></div>
+        <div class="agenda-data"><div class="num">${d ? d.getDate() : "—"}</div><div class="mes">${d ? MESES[d.getMonth()] : ""}</div></div>
         <div class="agenda-info">
-          <strong>${t.titulo}</strong>
+          <strong>${t.titulo || "(sem título)"}</strong>
           <span>${usuarioAtual.tipo === "admin" && cli ? (cli.empresa || cli.nome) : "Prazo agendado"}</span>
           <div class="badge ${t.status}">${labelStatus(t.status)}</div>
         </div>
       </div>`;
   }).join("");
+}
+
+// Parser de data à prova de valores nulos, vazios ou malformados vindos do banco.
+// Retorna null em vez de lançar exceção ou produzir "Invalid Date".
+function parseDataSegura(valor) {
+  if (!valor) return null;
+  try {
+    const d = new Date(String(valor).slice(0, 10) + "T00:00:00");
+    if (isNaN(d.getTime())) return null;
+    return d;
+  } catch (e) {
+    return null;
+  }
 }
 
 function labelStatus(s) {
@@ -1836,8 +1880,8 @@ function renderizarAgendaPagina() {
   document.getElementById("agenda-sub").textContent = usuarioAtual.tipo === "admin"
     ? "Calendário completo de visitas — filtre por empresa se quiser"
     : "Suas visitas agendadas com a CAP Consultoria";
-  renderizarCalendario();
-  renderizarListaVisitas();
+  try { renderizarCalendario(); } catch (err) { console.error("Erro ao renderizar calendário:", err); }
+  try { renderizarListaVisitas(); } catch (err) { console.error("Erro ao renderizar lista de visitas:", err); }
 }
 
 function mudarMesCalendario(delta) {
@@ -1857,7 +1901,8 @@ function renderizarCalendario() {
   const lista = visitasFiltradas();
   const visitasPorDia = {};
   lista.forEach(v => {
-    const d = new Date(v.data_visita + "T00:00:00");
+    const d = parseDataSegura(v.data_visita);
+    if (!d) return; // ignora visitas sem data válida em vez de quebrar a página inteira
     if (d.getFullYear() === calendarioAnoAtual && d.getMonth() === calendarioMesAtual) {
       const dia = d.getDate();
       (visitasPorDia[dia] = visitasPorDia[dia] || []).push(v);
@@ -1881,21 +1926,21 @@ function renderizarCalendario() {
 function renderizarListaVisitas() {
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   const lista = visitasFiltradas()
-    .filter(v => new Date(v.data_visita + "T00:00:00") >= hoje)
-    .sort((a,b) => a.data_visita.localeCompare(b.data_visita))
+    .filter(v => { const d = parseDataSegura(v.data_visita); return d && d >= hoje; })
+    .sort((a,b) => (a.data_visita || "").localeCompare(b.data_visita || ""))
     .slice(0, 10);
   const el = document.getElementById("lista-visitas");
   document.getElementById("visitas-vazio").style.display = lista.length ? "none" : "block";
   el.innerHTML = lista.map(v => {
-    const d = new Date(v.data_visita + "T00:00:00");
+    const d = parseDataSegura(v.data_visita);
     const cli = getClienteById(v.cliente_id);
     return `
       <div class="agenda-dia">
-        <div class="agenda-data"><div class="num">${d.getDate()}</div><div class="mes">${MESES[d.getMonth()]}</div></div>
+        <div class="agenda-data"><div class="num">${d ? d.getDate() : "—"}</div><div class="mes">${d ? MESES[d.getMonth()] : ""}</div></div>
         <div class="agenda-info">
-          <strong>${v.titulo}</strong>
+          <strong>${v.titulo || "(sem título)"}</strong>
           <span>${usuarioAtual.tipo === "admin" && cli ? (cli.empresa || cli.nome) + " • " : ""}${v.hora_inicio ? v.hora_inicio.slice(0,5) : ""}${v.hora_fim ? " às " + v.hora_fim.slice(0,5) : ""}${v.local ? " • " + v.local : ""}</span>
-          <div class="badge ${v.status}">${v.status === 'agendada' ? 'Agendada' : v.status === 'realizada' ? 'Realizada' : 'Cancelada'}</div>
+          <div class="badge ${v.status || 'agendada'}">${v.status === 'agendada' ? 'Agendada' : v.status === 'realizada' ? 'Realizada' : v.status === 'cancelada' ? 'Cancelada' : 'Agendada'}</div>
         </div>
         ${usuarioAtual.tipo === "admin" ? `
         <div class="acoes-linha">
