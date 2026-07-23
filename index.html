@@ -946,16 +946,41 @@ select.select-status{
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
-// Fallback: se o CDN principal falhar (bloqueio de rede, adblock, etc.),
+// Fallback: se o CDN principal falhar (bloqueio de rede, adblock, firewall, etc.),
 // tenta um segundo CDN antes de deixar o usuário sem gráficos.
+// CRÍTICO: nunca deixa o app esperando indefinidamente — sempre chama o
+// callback dentro de no máximo 3 segundos, com ou sem Chart.js disponível.
 function garantirChartJs(callback) {
-  if (typeof Chart !== "undefined") { callback(); return; }
+  let jaChamou = false;
+  const chamarUmaVez = () => {
+    if (jaChamou) return;
+    jaChamou = true;
+    callback();
+    // Se os gráficos ainda não puderam ser desenhados quando a página abriu
+    // (Chart.js ainda carregando), redesenha o dashboard agora que está pronto.
+    if (typeof Chart !== "undefined" && typeof renderizarDashboard === "function") {
+      const paginaAtiva = document.querySelector(".pagina");
+      if (paginaAtiva && paginaAtiva.id === "pagina-dashboard") {
+        try { renderizarDashboard(); } catch (e) { /* silencioso: melhor esforço */ }
+      }
+    }
+  };
+
+  if (typeof Chart !== "undefined") { chamarUmaVez(); return; }
+
+  // Timeout de segurança: se nada responder em 3s, segue sem gráficos.
+  const timeoutSeguranca = setTimeout(() => {
+    console.warn("Tempo esgotado carregando Chart.js — o sistema vai abrir sem gráficos.");
+    chamarUmaVez();
+  }, 3000);
+
   const s = document.createElement("script");
   s.src = "https://unpkg.com/chart.js@4.4.1/dist/chart.umd.js";
-  s.onload = callback;
-  s.onerror = function () {
+  s.onload = () => { clearTimeout(timeoutSeguranca); chamarUmaVez(); };
+  s.onerror = () => {
+    clearTimeout(timeoutSeguranca);
     console.error("Não foi possível carregar a biblioteca de gráficos (Chart.js) de nenhuma fonte.");
-    callback(); // segue mesmo assim; o código dos gráficos já checa "typeof Chart"
+    chamarUmaVez();
   };
   document.head.appendChild(s);
 }
@@ -1116,7 +1141,8 @@ document.getElementById("form-login").addEventListener("submit", async (e) => {
       localStorage.removeItem("cap_credenciais_lembradas");
     }
 
-    garantirChartJs(iniciarApp);
+    garantirChartJs(() => {}); // dispara o carregamento em paralelo, sem bloquear o login
+    iniciarApp();
   } catch (err) {
     erroEl.textContent = "Não foi possível conectar. Verifique sua internet e tente novamente.";
     erroEl.style.display = "block";
@@ -1134,7 +1160,8 @@ document.getElementById("btn-sair").addEventListener("click", () => {
   if (salvo) {
     try {
       usuarioAtual = JSON.parse(salvo);
-      garantirChartJs(iniciarApp);
+      garantirChartJs(() => {}); // dispara o carregamento em paralelo, sem bloquear
+      iniciarApp();
     } catch (e) { localStorage.removeItem("cap_sessao"); }
   }
 })();
