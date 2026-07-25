@@ -635,6 +635,7 @@ select.select-status{
       <div class="topbar-titulo">CAP Consultoria<small id="topbar-sub">Painel de Projetos</small></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
+      <select id="seletor-area" title="Trocar area (Marketing / Financeiro)" style="background:rgba(255,255,255,0.12);color:#fff;border:1px solid rgba(255,255,255,0.22);border-radius:8px;padding:7px 10px;font-size:13px;font-weight:600;cursor:pointer;max-width:160px;display:none;"></select>
       <button id="btn-forcar-diagnostico" title="Ver diagnóstico do sistema" style="background:rgba(255,255,255,0.1);border:none;color:#fff;width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:14px;">🛠️</button>
       <button class="avatar-btn" id="avatar-btn">--</button>
     </div>
@@ -863,11 +864,33 @@ select.select-status{
       <div class="card-titulo">Clientes cadastrados</div>
       <div class="tabela-scroll">
         <table class="tabela">
-          <thead><tr><th>Nome</th><th>Empresa</th><th>E-mail</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>Nome</th><th>Empresa</th><th>E-mail</th><th>Áreas</th><th>Status</th><th></th></tr></thead>
           <tbody id="tabela-clientes-corpo"></tbody>
         </table>
       </div>
       <div class="vazio" id="clientes-vazio" style="display:none">Nenhum cliente cadastrado ainda.</div>
+    </div>
+  </section>
+</template>
+
+<template id="tpl-equipe">
+  <section class="pagina" id="pagina-equipe">
+    <div class="page-header">
+      <div>
+        <h1>Equipe</h1>
+        <p>Membros de equipe com acesso a uma área específica</p>
+      </div>
+      <button class="btn btn-laranja btn-sm" id="btn-novo-membro">+ Novo membro</button>
+    </div>
+    <div class="card">
+      <div class="card-titulo">Membros cadastrados</div>
+      <div class="tabela-scroll">
+        <table class="tabela">
+          <thead><tr><th>Nome</th><th>Área</th><th>E-mail</th><th>Status</th><th></th></tr></thead>
+          <tbody id="tabela-equipe-corpo"></tbody>
+        </table>
+      </div>
+      <div class="vazio" id="equipe-vazio" style="display:none">Nenhum membro de equipe cadastrado ainda.</div>
     </div>
   </section>
 </template>
@@ -950,18 +973,52 @@ select.select-status{
   </div>
 </div>
 
-<!-- MODAL: Novo Cliente -->
+<!-- MODAL: Novo/Editar Cliente -->
 <div class="modal-overlay" id="modal-cliente">
   <div class="modal">
-    <h3>Novo cliente</h3>
+    <h3 id="modal-cliente-titulo">Novo cliente</h3>
+    <input type="hidden" id="cliente-id">
     <div class="campo"><label>Nome</label><input type="text" id="cliente-nome" placeholder="Nome do responsável"></div>
     <div class="campo"><label>Empresa</label><input type="text" id="cliente-empresa" placeholder="Nome da empresa"></div>
     <div class="campo"><label>E-mail (login)</label><input type="email" id="cliente-email" placeholder="cliente@empresa.com"></div>
     <div class="campo"><label>Senha de acesso</label><input type="text" id="cliente-senha" placeholder="Defina uma senha"></div>
     <div class="campo"><label>Telefone</label><input type="text" id="cliente-telefone" placeholder="(opcional)"></div>
+    <div class="campo">
+      <label>Áreas que a empresa pode acessar</label>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
+        <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-weight:500;font-size:14px;color:var(--texto);letter-spacing:normal;cursor:pointer;margin:0;">
+          <input type="checkbox" id="cliente-acesso-marketing" style="width:auto;accent-color:var(--laranja);"> 📣 Marketing
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-weight:500;font-size:14px;color:var(--texto);letter-spacing:normal;cursor:pointer;margin:0;">
+          <input type="checkbox" id="cliente-acesso-financeiro" checked style="width:auto;accent-color:var(--laranja);"> 💰 Financeiro
+        </label>
+      </div>
+    </div>
     <div class="modal-acoes">
       <button class="btn btn-outline" id="btn-cancelar-cliente">Cancelar</button>
       <button class="btn" id="btn-salvar-cliente">Cadastrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Novo/Editar Membro de Equipe -->
+<div class="modal-overlay" id="modal-equipe">
+  <div class="modal">
+    <h3 id="modal-equipe-titulo">Novo membro</h3>
+    <input type="hidden" id="equipe-id">
+    <div class="campo"><label>Nome</label><input type="text" id="equipe-nome" placeholder="Nome do membro"></div>
+    <div class="campo"><label>E-mail (login)</label><input type="email" id="equipe-email" placeholder="membro@cap.com"></div>
+    <div class="campo"><label>Senha de acesso</label><input type="text" id="equipe-senha" placeholder="Defina uma senha"></div>
+    <div class="campo">
+      <label>Área de acesso</label>
+      <select id="equipe-area">
+        <option value="marketing">📣 Marketing</option>
+        <option value="financeiro">💰 Financeiro</option>
+      </select>
+    </div>
+    <div class="modal-acoes">
+      <button class="btn btn-outline" id="btn-cancelar-equipe">Cancelar</button>
+      <button class="btn" id="btn-salvar-equipe">Cadastrar</button>
     </div>
   </div>
 </div>
@@ -1231,6 +1288,46 @@ let graficoAnual, graficoStatus;
 // (o estado do cronômetro vive só no banco: t.cronometro_iniciado_em / t.tempo_gasto_segundos)
 let calendarioMesAtual = new Date().getMonth();
 let calendarioAnoAtual = new Date().getFullYear();
+let todaEquipe = [];
+
+/* ================= AREAS (Marketing / Financeiro) ================= */
+let areaAtual = "financeiro";
+const AREAS = {
+  marketing:  { label: "Marketing",  icone: "📣" },
+  financeiro: { label: "Financeiro", icone: "💰" }
+};
+function ehGestor(){ return usuarioAtual && (usuarioAtual.tipo === "admin" || usuarioAtual.tipo === "equipe"); }
+function areaDaTarefa(t){ return t.area || "financeiro"; }
+function areaDaVisita(v){ return v.area || "financeiro"; }
+function areasDisponiveis(){
+  if (!usuarioAtual) return ["financeiro"];
+  if (usuarioAtual.tipo === "admin") return ["marketing","financeiro"];
+  if (usuarioAtual.tipo === "equipe") return [usuarioAtual.area === "marketing" ? "marketing" : "financeiro"];
+  const arr = [];
+  if (usuarioAtual.acesso_marketing === true) arr.push("marketing");
+  if (usuarioAtual.acesso_financeiro === true) arr.push("financeiro");
+  if (arr.length === 0) arr.push("financeiro"); // legado / fallback
+  return arr;
+}
+function filtrarPorArea(lista){ return lista.filter(function(x){ return (x.area || "financeiro") === areaAtual; }); }
+function montarSeletorArea(){
+  const sel = document.getElementById("seletor-area");
+  if (!sel) return;
+  const areas = areasDisponiveis();
+  if (!areas.includes(areaAtual)) areaAtual = areas[0];
+  sel.innerHTML = areas.map(function(a){ return `<option value="${a}">${AREAS[a].icone} ${AREAS[a].label}</option>`; }).join("");
+  sel.value = areaAtual;
+  sel.disabled = areas.length <= 1;
+  sel.style.display = "inline-block";
+}
+function trocarArea(nova){
+  const areas = areasDisponiveis();
+  if (!areas.includes(nova)) return;
+  areaAtual = nova;
+  try { localStorage.setItem("cap_area_" + usuarioAtual.id, nova); } catch (e) {}
+  atualizarPaginaAtual();
+}
+document.getElementById("seletor-area")?.addEventListener("change", function(e){ trocarArea(e.target.value); });
 
 const MESES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 const MESES_LONGO = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
@@ -1322,7 +1419,15 @@ async function iniciarApp() {
     document.getElementById("tela-login").style.display = "none";
     document.getElementById("app").style.display = "block";
     document.getElementById("avatar-btn").textContent = iniciais(usuarioAtual.nome);
-    document.getElementById("sidebar-user").textContent = usuarioAtual.tipo === "admin" ? "Administrador" : (usuarioAtual.empresa || usuarioAtual.nome);
+    let rotuloUser = "Administrador";
+    if (usuarioAtual.tipo === "equipe") rotuloUser = "Equipe " + (AREAS[usuarioAtual.area] ? AREAS[usuarioAtual.area].label : "");
+    else if (usuarioAtual.tipo === "cliente") rotuloUser = usuarioAtual.empresa || usuarioAtual.nome;
+    document.getElementById("sidebar-user").textContent = rotuloUser;
+    const areasIni = areasDisponiveis();
+    let areaSalva = null;
+    try { areaSalva = localStorage.getItem("cap_area_" + usuarioAtual.id); } catch (e) {}
+    areaAtual = (areaSalva && areasIni.includes(areaSalva)) ? areaSalva : areasIni[0];
+    montarSeletorArea();
     console.log("[iniciarApp] Cabeçalho e sidebar configurados");
   } catch (err) {
     console.error("[iniciarApp] Falha ao configurar cabeçalho/sidebar:", err);
@@ -1388,6 +1493,9 @@ function montarMenu() {
     itens.push({ id: "solicitacoes", label: "Solicitações", icone: "📥", contador: true });
     itens.push({ id: "categorias", label: "Categorias", icone: "🏷️" });
     itens.push({ id: "clientes", label: "Clientes", icone: "👥" });
+    itens.push({ id: "equipe", label: "Equipe", icone: "👷" });
+  } else if (usuarioAtual.tipo === "equipe") {
+    itens.push({ id: "solicitacoes", label: "Solicitações", icone: "📥", contador: true });
   }
   const container = document.getElementById("menu-itens");
   container.innerHTML = itens.map(it =>
@@ -1415,6 +1523,7 @@ function atualizarPaginaAtual() {
     "pagina-categorias": renderizarTabelaCategorias,
     "pagina-agenda": renderizarAgendaPagina,
     "pagina-clientes": renderizarTabelaClientes,
+    "pagina-equipe": renderizarTabelaEquipe,
   };
   const fn = mapa[secao.id];
   if (fn) { try { fn(); } catch (e) { console.error("Erro ao atualizar a página:", e); } }
@@ -1445,7 +1554,7 @@ function irParaPagina(id) {
   // Sem esta linha a página fica renderizada no DOM porém invisível (tela em branco).
   conteudo.querySelectorAll(".pagina").forEach(function (secao) { secao.classList.add("ativa"); });
   document.querySelectorAll(".menu-item").forEach(m => m.classList.toggle("ativo", m.dataset.pagina === id));
-  const titulos = { dashboard: "Painel geral", tarefas: "Projetos", concluidos: "Projetos concluídos", solicitacoes: "Solicitações", categorias: "Categorias", agenda: "Agenda de visitas", clientes: "Clientes" };
+  const titulos = { dashboard: "Painel geral", tarefas: "Projetos", concluidos: "Projetos concluídos", solicitacoes: "Solicitações", categorias: "Categorias", agenda: "Agenda de visitas", clientes: "Clientes", equipe: "Equipe" };
   document.getElementById("topbar-sub").textContent = titulos[id] || "";
 
   // Cada etapa roda isoladamente: um erro em uma delas não impede as outras,
@@ -1461,6 +1570,7 @@ function irParaPagina(id) {
       if (id === "categorias") renderizarTabelaCategorias();
       if (id === "agenda") renderizarAgendaPagina();
       if (id === "clientes") renderizarTabelaClientes();
+      if (id === "equipe") renderizarTabelaEquipe();
     }],
     ["contador de solicitações", () => atualizarContadorSolicitacoes()],
   ];
@@ -1484,7 +1594,7 @@ function irParaPagina(id) {
 }
 
 function ajustarVisibilidadePorPerfil(id) {
-  if (usuarioAtual.tipo === "admin") {
+  if (ehGestor()) {
     if (id === "dashboard") {
       document.getElementById("card-filtros-dashboard").style.display = "block";
       popularFiltroEmpresas();
@@ -1579,8 +1689,15 @@ async function carregarDados() {
 
   if (usuarioAtual.tipo === "admin") {
     todosClientes = await carregarComSeguranca(sb(`cap_usuarios?tipo=eq.cliente&select=*&order=nome.asc`), [], "clientes");
+    todaEquipe = await carregarComSeguranca(sb(`cap_usuarios?tipo=eq.equipe&select=*&order=nome.asc`), [], "equipe");
     todasTarefas = await carregarComSeguranca(sb(`cap_tarefas?select=*&order=data_prevista.asc`), [], "tarefas");
     todasVisitas = await carregarComSeguranca(sb(`cap_visitas?select=*&order=data_visita.asc`), [], "visitas");
+  } else if (usuarioAtual.tipo === "equipe") {
+    const areaEq = usuarioAtual.area === "marketing" ? "marketing" : "financeiro";
+    const fArea = areaEq === "financeiro" ? "or=(area.eq.financeiro,area.is.null)" : "area=eq.marketing";
+    todosClientes = await carregarComSeguranca(sb(`cap_usuarios?tipo=eq.cliente&select=*&order=nome.asc`), [], "clientes");
+    todasTarefas = await carregarComSeguranca(sb(`cap_tarefas?${fArea}&select=*&order=data_prevista.asc`), [], "tarefas");
+    todasVisitas = await carregarComSeguranca(sb(`cap_visitas?${fArea}&select=*&order=data_visita.asc`), [], "visitas");
   } else {
     todosClientes = [];
     todasTarefas = await carregarComSeguranca(sb(`cap_tarefas?cliente_id=eq.${usuarioAtual.id}&aprovada=eq.true&select=*&order=data_prevista.asc`), [], "tarefas");
@@ -1691,6 +1808,10 @@ function ligarEventosPagina(id) {
     const fEmpresa = document.getElementById("filtro-agenda-empresa");
     if (fEmpresa) fEmpresa.addEventListener("change", renderizarAgendaPagina);
   }
+  if (id === "equipe") {
+    const b = document.getElementById("btn-novo-membro");
+    if (b) b.addEventListener("click", abrirNovoMembro);
+  }
 }
 
 function getClienteById(id) { return todosClientes.find(c => c.id === id); }
@@ -1708,7 +1829,7 @@ function tarefasFiltradasDashboard() {
   // Quando o intervalo de datas é usado, ele manda: mês/ano/dia ficam de fora
   const usandoIntervalo = !!(de || ate);
 
-  return todasTarefas.filter(t => {
+  return filtrarPorArea(todasTarefas).filter(t => {
     if (empresa) {
       const cli = getClienteById(t.cliente_id);
       if (!cli || cli.empresa !== empresa) return false;
@@ -1896,7 +2017,7 @@ function renderizarGraficoStatus(abertas, andamento, concluidas) {
 
 function renderizarAgenda() {
   const hoje = new Date(); hoje.setHours(0,0,0,0);
-  const proximas = todasTarefas
+  const proximas = filtrarPorArea(todasTarefas)
     .filter(t => t.data_prevista && t.status !== "concluida")
     .filter(t => { const d = parseDataSegura(t.data_prevista); return d && d >= hoje; })
     .sort((a,b) => (a.data_prevista || "").localeCompare(b.data_prevista || ""))
@@ -1916,7 +2037,7 @@ function renderizarAgenda() {
         <div class="agenda-data"><div class="num">${d ? d.getDate() : "—"}</div><div class="mes">${d ? MESES[d.getMonth()] : ""}</div></div>
         <div class="agenda-info">
           <strong>${t.titulo || "(sem título)"}</strong>
-          <span>${usuarioAtual.tipo === "admin" && cli ? (cli.empresa || cli.nome) : "Prazo agendado"}</span>
+          <span>${ehGestor() && cli ? (cli.empresa || cli.nome) : "Prazo agendado"}</span>
           <div class="badge ${t.status}">${labelStatus(t.status)}</div>
         </div>
       </div>`;
@@ -1969,7 +2090,7 @@ function tarefasFiltradasLista() {
   const deF = document.getElementById("filtro-tarefas-de")?.value;
   const ateF = document.getElementById("filtro-tarefas-ate")?.value;
 
-  let lista = todasTarefas.filter(t => (usuarioAtual.tipo === "admin" ? t.aprovada !== false : true) && t.status !== "concluida");
+  let lista = filtrarPorArea(todasTarefas).filter(t => (ehGestor() ? t.aprovada !== false : true) && t.status !== "concluida");
   if (statusF) lista = lista.filter(t => t.status === statusF);
   if (empresaF) lista = lista.filter(t => { const c = getClienteById(t.cliente_id); return c && c.empresa === empresaF; });
   if (categoriaF) lista = lista.filter(t => t.categoria_id === categoriaF);
@@ -1994,13 +2115,13 @@ function renderizarTabelaTarefas() {
     return `
       <tr>
         <td><strong>${t.titulo}</strong>${t.descricao ? `<br><span style="color:var(--texto-suave);font-size:12px">${t.descricao}</span>` : ""}</td>
-        ${usuarioAtual.tipo === "admin" ? `<td>${cli ? (cli.empresa || cli.nome) : "—"}</td>` : ""}
+        ${ehGestor() ? `<td>${cli ? (cli.empresa || cli.nome) : "—"}</td>` : ""}
         <td>${cat ? `<span class="chip-categoria" style="background:${cat.cor}">${cat.nome}</span>` : "—"}</td>
         <td>${t.colaborador || "—"}</td>
         <td>${inicio}</td>
         <td>${prazo}</td>
         <td>
-          ${usuarioAtual.tipo === "admin"
+          ${ehGestor()
             ? `<div class="cronometro ${rodando ? 'rodando':''}" id="cronometro-${t.id}">
                  <button class="btn-icone ${rodando ? 'ativo':''}" onclick="alternarCronometro('${t.id}')" title="${rodando ? 'Pausar' : 'Iniciar'}">${rodando ? '⏸' : '▶'}</button>
                  <span class="tempo-vivo" data-tarefa="${t.id}">${formatarTempo(tempoTotalTarefa(t))}</span>
@@ -2013,7 +2134,7 @@ function renderizarTabelaTarefas() {
           }
         </td>
         <td>
-          ${usuarioAtual.tipo === "admin"
+          ${ehGestor()
             ? `<select class="select-status" onchange="alterarStatus('${t.id}', this.value)">
                  <option value="aberta" ${t.status==='aberta'?'selected':''}>Aberta</option>
                  <option value="em_andamento" ${t.status==='em_andamento'?'selected':''}>Em andamento</option>
@@ -2026,7 +2147,7 @@ function renderizarTabelaTarefas() {
         <td>
           <div class="acoes-linha">
             <button class="btn-icone" onclick="verDetalhesTarefa('${t.id}')" title="Ver objetivo, indicador e abrangência">ℹ️</button>
-            ${usuarioAtual.tipo === "admin" ? `
+            ${ehGestor() ? `
             <button class="btn-icone" onclick="abrirEdicaoTarefa('${t.id}')" title="Editar">✎</button>
             <button class="btn-icone perigo" onclick="excluirTarefa('${t.id}')" title="Excluir">🗑</button>` : ""}
           </div>
@@ -2042,7 +2163,7 @@ function projetosConcluidosFiltrados() {
   const deF = document.getElementById("filtro-concluidos-de")?.value;
   const ateF = document.getElementById("filtro-concluidos-ate")?.value;
 
-  let lista = todasTarefas.filter(t => (usuarioAtual.tipo === "admin" ? t.aprovada !== false : true) && t.status === "concluida");
+  let lista = filtrarPorArea(todasTarefas).filter(t => (ehGestor() ? t.aprovada !== false : true) && t.status === "concluida");
   if (empresaF) lista = lista.filter(t => { const c = getClienteById(t.cliente_id); return c && c.empresa === empresaF; });
   if (categoriaF) lista = lista.filter(t => t.categoria_id === categoriaF);
   if (deF) lista = lista.filter(t => t.data_conclusao && t.data_conclusao >= deF);
@@ -2065,7 +2186,7 @@ function renderizarTabelaConcluidos() {
     return `
       <tr>
         <td><strong>${t.titulo}</strong>${t.descricao ? `<br><span style="color:var(--texto-suave);font-size:12px">${t.descricao}</span>` : ""}</td>
-        ${usuarioAtual.tipo === "admin" ? `<td>${cli ? (cli.empresa || cli.nome) : "—"}</td>` : ""}
+        ${ehGestor() ? `<td>${cli ? (cli.empresa || cli.nome) : "—"}</td>` : ""}
         <td>${cat ? `<span class="chip-categoria" style="background:${cat.cor}">${cat.nome}</span>` : "—"}</td>
         <td>${t.colaborador || "—"}</td>
         <td>${concluidoEm}</td>
@@ -2074,7 +2195,7 @@ function renderizarTabelaConcluidos() {
         <td>
           <div class="acoes-linha">
             <button class="btn-icone" onclick="verDetalhesTarefa('${t.id}')" title="Ver objetivo, indicador e abrangência">ℹ️</button>
-            ${usuarioAtual.tipo === "admin" ? `
+            ${ehGestor() ? `
             <button class="btn-icone" onclick="reverterConclusao('${t.id}')" title="Reverter para Em andamento">↩️</button>
             <button class="btn-icone perigo" onclick="excluirTarefa('${t.id}')" title="Excluir">🗑</button>` : ""}
           </div>
@@ -2192,7 +2313,7 @@ function abrirNovaTarefa() {
   document.getElementById("tarefa-data").value = "";
   document.getElementById("tarefa-prioridade").value = "media";
   document.getElementById("tarefa-status").value = "aberta";
-  document.getElementById("campo-tarefa-cliente").style.display = usuarioAtual.tipo === "admin" ? "block" : "none";
+  document.getElementById("campo-tarefa-cliente").style.display = ehGestor() ? "block" : "none";
   document.getElementById("modal-tarefa").style.display = "flex";
 }
 
@@ -2245,7 +2366,7 @@ document.getElementById("btn-salvar-tarefa").addEventListener("click", async () 
   const id = document.getElementById("tarefa-id").value;
   const titulo = document.getElementById("tarefa-titulo").value.trim();
   if (!titulo) { alert("Informe o título do projeto."); return; }
-  const clienteId = usuarioAtual.tipo === "admin" ? document.getElementById("tarefa-cliente").value : usuarioAtual.id;
+  const clienteId = ehGestor() ? document.getElementById("tarefa-cliente").value : usuarioAtual.id;
   if (!clienteId) { alert("Selecione um cliente."); return; }
 
   const status = document.getElementById("tarefa-status").value;
@@ -2286,6 +2407,7 @@ document.getElementById("btn-salvar-tarefa").addEventListener("click", async () 
     } else {
       body.aprovada = true;
       body.criado_por_cliente = false;
+      body.area = areaAtual;
       const criado = await sb(`cap_tarefas`, { method: "POST", body: JSON.stringify(body) });
       todasTarefas.unshift(criado[0]);
     }
@@ -2300,7 +2422,7 @@ document.getElementById("btn-salvar-tarefa").addEventListener("click", async () 
 function atualizarContadorSolicitacoes() {
   const badge = document.getElementById("contador-solicitacoes");
   if (!badge) return;
-  const pendentes = todasTarefas.filter(t => t.criado_por_cliente && t.aprovada === false).length;
+  const pendentes = filtrarPorArea(todasTarefas).filter(t => t.criado_por_cliente && t.aprovada === false).length;
   if (pendentes > 0) {
     badge.textContent = pendentes;
     badge.style.display = "inline-block";
@@ -2311,7 +2433,7 @@ function atualizarContadorSolicitacoes() {
 
 function renderizarSolicitacoes() {
   if (!document.getElementById("solicitacoes-vazio")) return;
-  const lista = todasTarefas.filter(t => t.criado_por_cliente && t.aprovada === false);
+  const lista = filtrarPorArea(todasTarefas).filter(t => t.criado_por_cliente && t.aprovada === false);
   const el = document.getElementById("lista-solicitacoes");
   document.getElementById("solicitacoes-vazio").style.display = lista.length ? "none" : "block";
   el.innerHTML = lista.map(t => {
@@ -2358,6 +2480,7 @@ document.getElementById("btn-enviar-solicitacao").addEventListener("click", asyn
   if (!titulo) { alert("Descreva o que você precisa."); return; }
   const body = {
     cliente_id: usuarioAtual.id,
+    area: areaAtual,
     titulo,
     descricao: document.getElementById("solicitacao-descricao").value.trim(),
     prioridade: document.getElementById("solicitacao-prioridade").value,
@@ -2451,7 +2574,7 @@ document.addEventListener("click", async (e) => {
 /* ================= AGENDA DE VISITAS (item 7) ================= */
 function visitasFiltradas() {
   const empresaF = document.getElementById("filtro-agenda-empresa")?.value;
-  let lista = [...todasVisitas];
+  let lista = todasVisitas.filter(v => (v.area || "financeiro") === areaAtual);
   if (empresaF) lista = lista.filter(v => { const c = getClienteById(v.cliente_id); return c && c.empresa === empresaF; });
   return lista;
 }
@@ -2495,7 +2618,7 @@ function expandirOcorrencias(lista, dataInicioPeriodo, dataFimPeriodo) {
 
 function renderizarAgendaPagina() {
   if (!document.getElementById("agenda-sub")) return;
-  document.getElementById("agenda-sub").textContent = usuarioAtual.tipo === "admin"
+  document.getElementById("agenda-sub").textContent = ehGestor()
     ? "Calendário completo de visitas — filtre por empresa se quiser"
     : "Suas visitas agendadas com a CAP Consultoria";
   try { renderizarCalendario(); } catch (err) { console.error("Erro ao renderizar calendário:", err); }
@@ -2536,7 +2659,7 @@ function renderizarCalendario() {
     const maxVisiveis = 3;
     const eventosMini = eventos.slice(0, maxVisiveis).map(v => {
       const cli = getClienteById(v.cliente_id);
-      const nome = usuarioAtual.tipo === "admin" && cli ? (cli.empresa || cli.nome) : (v.titulo || "Visita");
+      const nome = ehGestor() && cli ? (cli.empresa || cli.nome) : (v.titulo || "Visita");
       const hora = v.hora_inicio ? v.hora_inicio.slice(0, 5) : "";
       const tooltip = `${v.titulo || ""}${cli ? " — " + (cli.empresa || cli.nome) : ""}${hora ? " às " + hora : ""}`.trim();
       return `<div class="evento-mini status-${v.status || 'agendada'}" title="${tooltip.replace(/"/g, "&quot;")}">${hora ? `<span class="evento-hora">${hora}</span>` : ""}${nome}</div>`;
@@ -2569,10 +2692,10 @@ function renderizarListaVisitas() {
         <div class="agenda-data"><div class="num">${d ? d.getDate() : "—"}</div><div class="mes">${d ? MESES[d.getMonth()] : ""}</div></div>
         <div class="agenda-info">
           <strong>${v.titulo || "(sem título)"}${v.recorrente ? ` <span style="font-size:10px;color:var(--laranja-dark);font-weight:700;">(TODA ${diasDaVisita(v).map(d => NOMES_DIAS[d]).join(" e ").toUpperCase()})</span>` : ''}</strong>
-          <span>${usuarioAtual.tipo === "admin" && cli ? (cli.empresa || cli.nome) + " • " : ""}${v.hora_inicio ? v.hora_inicio.slice(0,5) : ""}${v.hora_fim ? " às " + v.hora_fim.slice(0,5) : ""}${v.local ? " • " + v.local : ""}</span>
+          <span>${ehGestor() && cli ? (cli.empresa || cli.nome) + " • " : ""}${v.hora_inicio ? v.hora_inicio.slice(0,5) : ""}${v.hora_fim ? " às " + v.hora_fim.slice(0,5) : ""}${v.local ? " • " + v.local : ""}</span>
           <div class="badge ${v.status || 'agendada'}">${v.status === 'agendada' ? 'Agendada' : v.status === 'realizada' ? 'Realizada' : v.status === 'cancelada' ? 'Cancelada' : 'Agendada'}</div>
         </div>
-        ${usuarioAtual.tipo === "admin" ? `
+        ${ehGestor() ? `
         <div class="acoes-linha">
           ${!v.recorrente && v.status !== 'realizada' ? `<button class="btn-icone sucesso" onclick="marcarVisitaRealizada('${v.id}')" title="Marcar como concluída">✓</button>` : ""}
           ${!v.recorrente && v.status === 'realizada' ? `<button class="btn-icone" onclick="reverterVisita('${v.id}')" title="Reverter para Agendada">↩️</button>` : ""}
@@ -2622,7 +2745,7 @@ function abrirNovaVisita() {
   document.getElementById("visita-local").value = "";
   document.getElementById("visita-responsavel").value = "";
   document.getElementById("visita-status").value = "agendada";
-  document.getElementById("campo-visita-cliente").style.display = usuarioAtual.tipo === "admin" ? "block" : "none";
+  document.getElementById("campo-visita-cliente").style.display = ehGestor() ? "block" : "none";
   document.getElementById("btn-excluir-visita-modal").style.display = "none";
   document.getElementById("modal-visita").style.display = "flex";
 }
@@ -2653,7 +2776,7 @@ window.abrirEdicaoVisita = function(id) {
   document.getElementById("visita-local").value = v.local || "";
   document.getElementById("visita-responsavel").value = v.responsavel || "";
   document.getElementById("visita-status").value = v.status || "agendada";
-  document.getElementById("btn-excluir-visita-modal").style.display = usuarioAtual.tipo === "admin" ? "block" : "none";
+  document.getElementById("btn-excluir-visita-modal").style.display = ehGestor() ? "block" : "none";
   document.getElementById("modal-visita").style.display = "flex";
 };
 
@@ -2720,9 +2843,10 @@ document.addEventListener("click", async (e) => {
       return;
     }
 
-    const clienteId = usuarioAtual.tipo === "admin" ? document.getElementById("visita-cliente").value : usuarioAtual.id;
+    const clienteId = ehGestor() ? document.getElementById("visita-cliente").value : usuarioAtual.id;
     const body = {
       cliente_id: clienteId,
+      area: areaAtual,
       titulo,
       descricao: document.getElementById("visita-descricao").value.trim(),
       data_visita: data,
@@ -2757,18 +2881,26 @@ function renderizarTabelaClientes() {
   if (!document.getElementById("clientes-vazio")) return;
   const corpo = document.getElementById("tabela-clientes-corpo");
   document.getElementById("clientes-vazio").style.display = todosClientes.length ? "none" : "block";
-  corpo.innerHTML = todosClientes.map(c => `
+  corpo.innerHTML = todosClientes.map(c => {
+    const semFlag = (!c.acesso_marketing && !c.acesso_financeiro);
+    const areas = [];
+    if (c.acesso_marketing) areas.push('<span class="chip-categoria" style="background:#7a5cff">📣 Marketing</span>');
+    if (c.acesso_financeiro || semFlag) areas.push('<span class="chip-categoria" style="background:#2f9e58">💰 Financeiro</span>');
+    return `
     <tr>
       <td><strong>${c.nome}</strong></td>
       <td>${c.empresa || "—"}</td>
       <td>${c.email}</td>
+      <td><div style="display:flex;flex-wrap:wrap;gap:4px;">${areas.join(" ") || "—"}</div></td>
       <td><span class="badge ${c.ativo ? 'concluida' : 'aberta'}">${c.ativo ? 'Ativo' : 'Inativo'}</span></td>
       <td>
         <div class="acoes-linha">
+          <button class="btn-icone" onclick="abrirEdicaoCliente('${c.id}')" title="Editar dados e áreas">✎</button>
           <button class="btn-icone" onclick="alternarAtivoCliente('${c.id}', ${c.ativo})" title="${c.ativo ? 'Desativar' : 'Ativar'}">${c.ativo ? '⏸' : '▶'}</button>
         </div>
       </td>
-    </tr>`).join("");
+    </tr>`;
+  }).join("");
 }
 
 window.alternarAtivoCliente = async function(id, ativoAtual) {
@@ -2784,30 +2916,42 @@ document.getElementById("btn-cancelar-cliente")?.addEventListener("click", () =>
 
 document.addEventListener("click", async (e) => {
   if (e.target && e.target.id === "btn-salvar-cliente") {
+    const id = document.getElementById("cliente-id").value;
     const nome = document.getElementById("cliente-nome").value.trim();
     const email = document.getElementById("cliente-email").value.trim().toLowerCase();
     const senha = document.getElementById("cliente-senha").value;
-    if (!nome || !email || !senha) { alert("Preencha nome, e-mail e senha."); return; }
+    const acessoMkt = document.getElementById("cliente-acesso-marketing").checked;
+    const acessoFin = document.getElementById("cliente-acesso-financeiro").checked;
+    if (!nome || !email) { alert("Preencha ao menos nome e e-mail."); return; }
+    if (!id && !senha) { alert("Defina uma senha de acesso."); return; }
+    if (!acessoMkt && !acessoFin) { alert("Marque ao menos uma área de acesso (Marketing ou Financeiro)."); return; }
+    const dados = {
+      nome, email,
+      empresa: document.getElementById("cliente-empresa").value.trim(),
+      telefone: document.getElementById("cliente-telefone").value.trim(),
+      acesso_marketing: acessoMkt,
+      acesso_financeiro: acessoFin
+    };
+    if (senha) dados.senha = senha;
     try {
-      const criado = await sb(`cap_usuarios`, {
-        method: "POST",
-        body: JSON.stringify({
-          nome, email, senha,
-          tipo: "cliente",
-          empresa: document.getElementById("cliente-empresa").value.trim(),
-          telefone: document.getElementById("cliente-telefone").value.trim(),
-          ativo: true
-        })
-      });
-      todosClientes.push(criado[0]);
+      if (id) {
+        const atualizado = await sb(`cap_usuarios?id=eq.${id}`, { method: "PATCH", body: JSON.stringify(dados) });
+        const idx = todosClientes.findIndex(c => c.id === id);
+        if (idx !== -1) todosClientes[idx] = atualizado[0];
+      } else {
+        dados.tipo = "cliente";
+        dados.ativo = true;
+        const criado = await sb(`cap_usuarios`, { method: "POST", body: JSON.stringify(dados) });
+        todosClientes.push(criado[0]);
+      }
       popularFiltroEmpresas();
       renderizarTabelaClientes();
       document.getElementById("modal-cliente").style.display = "none";
     } catch (err) {
       if (err.message.includes("duplicate") || err.message.includes("23505")) {
-        alert("Já existe um cliente cadastrado com esse e-mail.");
+        alert("Já existe um usuário cadastrado com esse e-mail.");
       } else {
-        alert("Erro ao cadastrar cliente: " + err.message);
+        alert("Erro ao salvar cliente: " + err.message);
       }
     }
   }
@@ -2817,17 +2961,14 @@ document.addEventListener("click", async (e) => {
 document.getElementById("btn-flutuante").addEventListener("click", () => {
   const paginaAtiva = document.querySelector(".pagina")?.id;
   if (paginaAtiva === "pagina-clientes") {
-    document.getElementById("cliente-nome").value = "";
-    document.getElementById("cliente-empresa").value = "";
-    document.getElementById("cliente-email").value = "";
-    document.getElementById("cliente-senha").value = "";
-    document.getElementById("cliente-telefone").value = "";
-    document.getElementById("modal-cliente").style.display = "flex";
+    abrirNovoCliente();
+  } else if (paginaAtiva === "pagina-equipe") {
+    abrirNovoMembro();
   } else if (paginaAtiva === "pagina-agenda") {
     abrirNovaVisita();
   } else if (paginaAtiva === "pagina-categorias") {
     abrirNovaCategoria();
-  } else if (usuarioAtual.tipo === "admin") {
+  } else if (ehGestor()) {
     abrirNovaTarefa();
   } else {
     // cliente comum: botão flutuante abre solicitação de novo projeto
@@ -2967,6 +3108,130 @@ setInterval(verificarTelaVazia, 5000); // continua checando a cada 5s, cobrindo 
 document.addEventListener("click", function (e) {
   if (e.target && e.target.id === "btn-forcar-diagnostico") {
     exibirPainelDiagnostico(gerarRelatorioDiagnostico());
+  }
+});
+</script>
+
+<script>
+/* ================= CLIENTES: abrir novo / editar (com áreas) ================= */
+function abrirNovoCliente() {
+  document.getElementById("modal-cliente-titulo").textContent = "Novo cliente";
+  document.getElementById("cliente-id").value = "";
+  document.getElementById("cliente-nome").value = "";
+  document.getElementById("cliente-empresa").value = "";
+  document.getElementById("cliente-email").value = "";
+  document.getElementById("cliente-senha").value = "";
+  document.getElementById("cliente-senha").placeholder = "Defina uma senha";
+  document.getElementById("cliente-telefone").value = "";
+  document.getElementById("cliente-acesso-marketing").checked = false;
+  document.getElementById("cliente-acesso-financeiro").checked = true;
+  document.getElementById("btn-salvar-cliente").textContent = "Cadastrar";
+  document.getElementById("modal-cliente").style.display = "flex";
+}
+window.abrirEdicaoCliente = function(id) {
+  const c = todosClientes.find(c => c.id === id);
+  if (!c) return;
+  const semFlag = (!c.acesso_marketing && !c.acesso_financeiro);
+  document.getElementById("modal-cliente-titulo").textContent = "Editar cliente";
+  document.getElementById("cliente-id").value = c.id;
+  document.getElementById("cliente-nome").value = c.nome || "";
+  document.getElementById("cliente-empresa").value = c.empresa || "";
+  document.getElementById("cliente-email").value = c.email || "";
+  document.getElementById("cliente-senha").value = "";
+  document.getElementById("cliente-senha").placeholder = "Deixe em branco para manter a atual";
+  document.getElementById("cliente-telefone").value = c.telefone || "";
+  document.getElementById("cliente-acesso-marketing").checked = c.acesso_marketing === true;
+  document.getElementById("cliente-acesso-financeiro").checked = (c.acesso_financeiro === true) || semFlag;
+  document.getElementById("btn-salvar-cliente").textContent = "Salvar";
+  document.getElementById("modal-cliente").style.display = "flex";
+};
+
+/* ================= EQUIPE: tabela + CRUD ================= */
+function renderizarTabelaEquipe() {
+  if (!document.getElementById("equipe-vazio")) return;
+  const corpo = document.getElementById("tabela-equipe-corpo");
+  document.getElementById("equipe-vazio").style.display = todaEquipe.length ? "none" : "block";
+  corpo.innerHTML = todaEquipe.map(m => {
+    const info = AREAS[m.area] || AREAS.financeiro;
+    const cor = m.area === "marketing" ? "#7a5cff" : "#2f9e58";
+    return `
+    <tr>
+      <td><strong>${m.nome}</strong></td>
+      <td><span class="chip-categoria" style="background:${cor}">${info.icone} ${info.label}</span></td>
+      <td>${m.email}</td>
+      <td><span class="badge ${m.ativo ? 'concluida' : 'aberta'}">${m.ativo ? 'Ativo' : 'Inativo'}</span></td>
+      <td>
+        <div class="acoes-linha">
+          <button class="btn-icone" onclick="abrirEdicaoMembro('${m.id}')" title="Editar">✎</button>
+          <button class="btn-icone" onclick="alternarAtivoMembro('${m.id}', ${m.ativo})" title="${m.ativo ? 'Desativar' : 'Ativar'}">${m.ativo ? '⏸' : '▶'}</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join("");
+}
+function abrirNovoMembro() {
+  document.getElementById("modal-equipe-titulo").textContent = "Novo membro";
+  document.getElementById("equipe-id").value = "";
+  document.getElementById("equipe-nome").value = "";
+  document.getElementById("equipe-email").value = "";
+  document.getElementById("equipe-senha").value = "";
+  document.getElementById("equipe-senha").placeholder = "Defina uma senha";
+  document.getElementById("equipe-area").value = "marketing";
+  document.getElementById("btn-salvar-equipe").textContent = "Cadastrar";
+  document.getElementById("modal-equipe").style.display = "flex";
+}
+window.abrirEdicaoMembro = function(id) {
+  const m = todaEquipe.find(x => x.id === id);
+  if (!m) return;
+  document.getElementById("modal-equipe-titulo").textContent = "Editar membro";
+  document.getElementById("equipe-id").value = m.id;
+  document.getElementById("equipe-nome").value = m.nome || "";
+  document.getElementById("equipe-email").value = m.email || "";
+  document.getElementById("equipe-senha").value = "";
+  document.getElementById("equipe-senha").placeholder = "Deixe em branco para manter a atual";
+  document.getElementById("equipe-area").value = (m.area === "financeiro") ? "financeiro" : "marketing";
+  document.getElementById("btn-salvar-equipe").textContent = "Salvar";
+  document.getElementById("modal-equipe").style.display = "flex";
+};
+window.alternarAtivoMembro = async function(id, ativoAtual) {
+  try {
+    await sb(`cap_usuarios?id=eq.${id}`, { method: "PATCH", body: JSON.stringify({ ativo: !ativoAtual }) });
+    const m = todaEquipe.find(x => x.id === id);
+    if (m) m.ativo = !ativoAtual;
+    renderizarTabelaEquipe();
+  } catch (err) { alert("Erro: " + err.message); }
+};
+document.getElementById("btn-cancelar-equipe")?.addEventListener("click", () => document.getElementById("modal-equipe").style.display = "none");
+document.addEventListener("click", async (e) => {
+  if (e.target && e.target.id === "btn-salvar-equipe") {
+    const id = document.getElementById("equipe-id").value;
+    const nome = document.getElementById("equipe-nome").value.trim();
+    const email = document.getElementById("equipe-email").value.trim().toLowerCase();
+    const senha = document.getElementById("equipe-senha").value;
+    const area = document.getElementById("equipe-area").value;
+    if (!nome || !email) { alert("Preencha nome e e-mail."); return; }
+    if (!id && !senha) { alert("Defina uma senha de acesso."); return; }
+    const dados = { nome, email, area, tipo: "equipe" };
+    if (senha) dados.senha = senha;
+    try {
+      if (id) {
+        const atualizado = await sb(`cap_usuarios?id=eq.${id}`, { method: "PATCH", body: JSON.stringify(dados) });
+        const idx = todaEquipe.findIndex(x => x.id === id);
+        if (idx !== -1) todaEquipe[idx] = atualizado[0];
+      } else {
+        dados.ativo = true;
+        const criado = await sb(`cap_usuarios`, { method: "POST", body: JSON.stringify(dados) });
+        todaEquipe.push(criado[0]);
+      }
+      renderizarTabelaEquipe();
+      document.getElementById("modal-equipe").style.display = "none";
+    } catch (err) {
+      if (err.message.includes("duplicate") || err.message.includes("23505")) {
+        alert("Já existe um usuário com esse e-mail.");
+      } else {
+        alert("Erro ao salvar membro: " + err.message);
+      }
+    }
   }
 });
 </script>
