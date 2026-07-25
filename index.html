@@ -275,7 +275,7 @@ body{
 #sidebar{
   position:fixed;top:0;left:0;bottom:0;
   width:270px;
-  background:linear-gradient(180deg,#ff8c3d 0%,#fe6e0b 45%,#e05e00 100%);
+  background:var(--grad-escuro);
   z-index:100;
   transform:translateX(-100%);
   transition:transform .25s ease;
@@ -285,11 +285,11 @@ body{
 #sidebar.aberta{transform:translateX(0);}
 #btn-fixar-sidebar{
   position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;
-  background:rgba(255,255,255,0.18);border:none;color:#fff;cursor:pointer;
+  background:rgba(255,255,255,0.08);border:none;color:#9a9ba0;cursor:pointer;
   font-size:14px;transition:all .15s;z-index:2;
 }
-#btn-fixar-sidebar:hover{background:rgba(255,255,255,0.30);}
-#btn-fixar-sidebar.ativo{background:#fff;color:var(--laranja-dark);}
+#btn-fixar-sidebar:hover{background:rgba(255,255,255,0.16);}
+#btn-fixar-sidebar.ativo{background:var(--laranja);color:#fff;}
 @media(min-width:900px){
   body.sidebar-fixa #sidebar{transform:none;}
   body.sidebar-fixa #overlay-menu{display:none!important;}
@@ -298,7 +298,7 @@ body{
 }
 .sidebar-header{
   padding:0 20px 20px;
-  border-bottom:1px solid rgba(255,255,255,0.28);
+  border-bottom:1px solid rgba(255,255,255,0.08);
   margin-bottom:12px;
   display:flex;align-items:center;gap:12px;
 }
@@ -309,11 +309,11 @@ body{
 }
 .sidebar-header .marca img{width:100%;height:100%;object-fit:contain;}
 .sidebar-header h2{color:#fff;font-size:15px;font-weight:700;}
-.sidebar-header p{color:rgba(255,255,255,0.9);font-size:11.5px;}
+.sidebar-header p{color:#a8a9ac;font-size:11.5px;}
 .menu-item{
   display:flex;align-items:center;gap:12px;
   padding:13px 20px;
-  color:rgba(255,255,255,0.92);
+  color:#c3c4c7;
   text-decoration:none;
   font-size:14.5px;
   font-weight:500;
@@ -322,31 +322,31 @@ body{
   transition:background .15s;
   position:relative;
 }
-.menu-item:hover{background:rgba(255,255,255,0.14);}
+.menu-item:hover{background:rgba(255,255,255,0.05);}
 .menu-item.ativo{
-  background:rgba(255,255,255,0.20);
-  border-left-color:#fff;
-  color:#fff;font-weight:700;
+  background:linear-gradient(90deg, rgba(254,110,11,0.22), rgba(254,110,11,0.03));
+  border-left-color:var(--laranja);
+  color:#fff;
 }
 .menu-item .icone{font-size:17px;width:22px;text-align:center;}
 .menu-item .contador{
-  margin-left:auto;background:#fff;color:var(--laranja-dark);
+  margin-left:auto;background:var(--laranja);color:#fff;
   font-size:10.5px;font-weight:700;border-radius:20px;
   padding:1px 7px;
 }
 .menu-sair{
   margin-top:auto;
   padding:16px 20px;
-  border-top:1px solid rgba(255,255,255,0.28);
+  border-top:1px solid rgba(255,255,255,0.08);
 }
 .menu-sair .btn-outline{
-  background:rgba(255,255,255,0.12);
-  border:1.5px solid rgba(255,255,255,0.6);
-  color:#fff;
+  background:transparent;
+  border:1.5px solid rgba(255,255,255,0.3);
+  color:#e8e8ea;
 }
 .menu-sair .btn-outline:hover{
-  background:rgba(255,255,255,0.22);
-  border-color:#fff;
+  background:rgba(255,255,255,0.08);
+  border-color:rgba(255,255,255,0.5);
 }
 
 /* Conteúdo */
@@ -1337,7 +1337,7 @@ function areasDisponiveis(){
   if (arr.length === 0) arr.push("financeiro"); // legado / fallback
   return arr;
 }
-function filtrarPorArea(lista){ return lista.filter(function(x){ return (x.area || "financeiro") === areaAtual; }); }
+function filtrarPorArea(lista){ return lista.filter(function(x){ return x && (x.area || "financeiro") === areaAtual; }); }
 function clienteTemArea(c, area){
   if (area === "marketing") return c.acesso_marketing === true;
   // financeiro (inclui clientes legados sem flags definidas)
@@ -2446,7 +2446,14 @@ document.getElementById("btn-salvar-tarefa").addEventListener("click", async () 
       body.criado_por_cliente = false;
       body.area = areaAtual;
       const criado = await sb(`cap_tarefas`, { method: "POST", body: JSON.stringify(body) });
-      todasTarefas.unshift(criado[0]);
+      if (!criado || !criado[0]) {
+        throw new Error("O Supabase aceitou o pedido mas não devolveu o projeto criado. Verifique as permissões (RLS) da tabela cap_tarefas e confira no Table Editor se a linha foi realmente criada.");
+      }
+      const novoItem = { ...criado[0], area: criado[0].area || body.area };
+      todasTarefas.unshift(novoItem);
+      if (novoItem.area !== areaAtual) {
+        alert(`Projeto salvo, mas na área ${AREAS[novoItem.area] ? AREAS[novoItem.area].label : novoItem.area}. Troque a área no topo para vê-lo.`);
+      }
     }
     document.getElementById("modal-tarefa").style.display = "none";
     atualizarPaginaAtual();
@@ -2528,7 +2535,11 @@ document.getElementById("btn-enviar-solicitacao").addEventListener("click", asyn
   };
   try {
     const criado = await sb(`cap_tarefas`, { method: "POST", body: JSON.stringify(body) });
-    todasTarefas.unshift(criado[0]);
+    if (!criado || !criado[0]) {
+      throw new Error("O Supabase aceitou o pedido mas não devolveu a solicitação criada. Verifique as permissões (RLS) da tabela cap_tarefas.");
+    }
+    const novaSolicitacao = { ...criado[0], area: criado[0].area || body.area };
+    todasTarefas.unshift(novaSolicitacao);
     document.getElementById("modal-solicitacao").style.display = "none";
     alert("Solicitação enviada! A CAP Consultoria vai analisar em breve.");
   } catch (err) {
@@ -2903,7 +2914,11 @@ document.addEventListener("click", async (e) => {
         todasVisitas[idx] = atualizado[0];
       } else {
         const criado = await sb(`cap_visitas`, { method: "POST", body: JSON.stringify(body) });
-        todasVisitas.push(criado[0]);
+        if (!criado || !criado[0]) {
+          throw new Error("O Supabase aceitou o pedido mas não devolveu a visita criada. Verifique as permissões (RLS) da tabela cap_visitas.");
+        }
+        const novaVisita = { ...criado[0], area: criado[0].area || body.area };
+        todasVisitas.push(novaVisita);
       }
       document.getElementById("modal-visita").style.display = "none";
       renderizarAgendaPagina();
