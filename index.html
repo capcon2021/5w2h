@@ -49,36 +49,45 @@ function mostrarPainelErroGlobal() {
 </script>
 <style>
 :root{
-  --carvao-900:#1c1d1f;
-  --carvao-800:#28292b;
-  --grafite-700:#3d3e41;
+  --carvao-900:#191a1c;
+  --carvao-800:#242527;
+  --grafite-700:#3a3b3e;
   --grafite-600:#55565a;
   --grafite-500:#6d6e71;
   --prata:#9b9b9b;
   --laranja:#fe6e0b;
   --laranja-dark:#e05e00;
   --laranja-light:#ff8c3d;
-  --bg:#f4f4f5;
+  --bg:#f5f5f6;
+  --bg-alt:#eeeef0;
   --card:#ffffff;
   --texto:#212226;
   --texto-suave:#75767a;
-  --linha:#e7e7e8;
+  --linha:#e9e9eb;
   --verde:#2f9e58;
   --amarelo:#d99a1f;
   --vermelho:#d4483f;
-  --radius:14px;
-  --shadow: 0 2px 10px rgba(20,20,22,0.07), 0 1px 2px rgba(20,20,22,0.04);
+  --radius:16px;
+  --radius-sm:10px;
+  --grad-laranja:linear-gradient(135deg,#ff8c3d 0%,#fe6e0b 55%,#e05e00 100%);
+  --grad-escuro:linear-gradient(140deg,#242527 0%,#191a1c 60%,#101113 100%);
+  --shadow: 0 4px 16px rgba(20,20,22,0.06), 0 1px 3px rgba(20,20,22,0.05);
+  --shadow-md: 0 10px 30px rgba(20,20,22,0.10), 0 2px 6px rgba(20,20,22,0.06);
+  --shadow-laranja: 0 10px 26px rgba(254,110,11,0.32);
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{
   font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
-  background:var(--bg);
+  background:
+    radial-gradient(1100px 480px at 100% -8%, rgba(254,110,11,0.06), transparent 60%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-alt) 100%);
+  background-attachment:fixed;
   color:var(--texto);
   -webkit-font-smoothing:antialiased;
   min-height:100vh;
 }
 ::-webkit-scrollbar{width:6px;height:6px;}
-::-webkit-scrollbar-thumb{background:#c7cede;border-radius:10px;}
+::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--laranja-light),var(--laranja-dark));border-radius:10px;}
 
 /* ============ LOGIN ============ */
 #tela-login{
@@ -170,6 +179,7 @@ body{
   outline:none;
   border-color:var(--laranja);
   background:#fff;
+  box-shadow:0 0 0 3px rgba(254,110,11,0.15);
 }
 .campo-linha{display:flex;gap:10px;}
 .campo-linha .campo{flex:1;}
@@ -177,25 +187,27 @@ body{
   width:100%;
   padding:13px;
   border:none;
-  border-radius:10px;
-  background:var(--carvao-900);
+  border-radius:var(--radius-sm);
+  background:var(--grad-escuro);
   color:#fff;
   font-size:15px;
   font-weight:600;
   cursor:pointer;
-  transition:background .15s, transform .1s;
+  transition:box-shadow .18s, transform .1s, filter .18s;
   letter-spacing:0.2px;
+  box-shadow:0 4px 14px rgba(20,20,22,0.18);
 }
-.btn:hover{background:var(--grafite-700);}
-.btn:active{transform:scale(0.98);}
-.btn-laranja{background:var(--laranja);color:#fff;}
-.btn-laranja:hover{background:var(--laranja-dark);}
+.btn:hover{filter:brightness(1.14);box-shadow:0 6px 18px rgba(20,20,22,0.24);}
+.btn:active{transform:translateY(1px) scale(0.99);}
+.btn-laranja{background:var(--grad-laranja);color:#fff;box-shadow:var(--shadow-laranja);}
+.btn-laranja:hover{filter:brightness(1.06);box-shadow:0 12px 30px rgba(254,110,11,0.42);}
 .btn-outline{
   background:transparent;
   border:1.5px solid var(--linha);
   color:var(--texto);
+  box-shadow:none;
 }
-.btn-outline:hover{border-color:var(--laranja);color:var(--laranja-dark);}
+.btn-outline:hover{border-color:var(--laranja);color:var(--laranja-dark);background:rgba(254,110,11,0.05);box-shadow:none;filter:none;}
 .btn-sm{width:auto;padding:8px 14px;font-size:13px;}
 .erro-msg{
   background:#fdecec;
@@ -217,13 +229,13 @@ body{
 #app{display:none; min-height:100vh;}
 .topbar{
   position:sticky;top:0;z-index:50;
-  background:var(--carvao-900);
+  background:var(--grad-escuro);
   color:#fff;
   display:flex;
   align-items:center;
   justify-content:space-between;
   padding:14px 16px;
-  box-shadow:var(--shadow);
+  box-shadow:0 4px 20px rgba(20,20,22,0.18), inset 0 -2px 0 rgba(254,110,11,0.9);
 }
 .topbar-left{display:flex;align-items:center;gap:12px;}
 .hamburguer{
@@ -263,7 +275,7 @@ body{
 #sidebar{
   position:fixed;top:0;left:0;bottom:0;
   width:270px;
-  background:var(--carvao-800);
+  background:var(--grad-escuro);
   z-index:100;
   transform:translateX(-100%);
   transition:transform .25s ease;
@@ -312,7 +324,7 @@ body{
 }
 .menu-item:hover{background:rgba(255,255,255,0.05);}
 .menu-item.ativo{
-  background:rgba(254,110,11,0.12);
+  background:linear-gradient(90deg, rgba(254,110,11,0.22), rgba(254,110,11,0.03));
   border-left-color:var(--laranja);
   color:#fff;
 }
@@ -347,7 +359,14 @@ body{
   display:flex;justify-content:space-between;align-items:flex-start;
   margin-bottom:18px;flex-wrap:wrap;gap:10px;
 }
-.page-header h1{font-size:20px;color:var(--carvao-900);font-weight:700;}
+.page-header h1{
+  font-size:22px;color:var(--carvao-900);font-weight:800;letter-spacing:-0.2px;
+  position:relative;padding-left:14px;
+}
+.page-header h1::before{
+  content:'';position:absolute;left:0;top:4px;bottom:4px;width:5px;
+  border-radius:4px;background:var(--grad-laranja);
+}
 .page-header p{font-size:13px;color:var(--texto-suave);margin-top:2px;}
 
 /* Cards de indicadores */
@@ -360,10 +379,13 @@ body{
 .card-indicador{
   background:var(--card);
   border-radius:var(--radius);
-  padding:16px;
+  padding:18px;
   box-shadow:var(--shadow);
   border-top:3px solid var(--laranja);
+  position:relative;
+  transition:transform .18s, box-shadow .18s;
 }
+.card-indicador:hover{transform:translateY(-3px);box-shadow:var(--shadow-md);}
 .card-indicador.laranja{border-top-color:var(--laranja);}
 .card-indicador.verde{border-top-color:var(--verde);}
 .card-indicador.vermelho{border-top-color:var(--vermelho);}
@@ -374,9 +396,10 @@ body{
 .card{
   background:var(--card);
   border-radius:var(--radius);
-  padding:18px;
+  padding:20px;
   box-shadow:var(--shadow);
   margin-bottom:16px;
+  border:1px solid rgba(20,20,22,0.04);
 }
 .card-titulo{
   font-size:15px;font-weight:700;color:var(--carvao-900);
@@ -402,7 +425,8 @@ body{
 .agenda-dia:last-child{border-bottom:none;}
 .agenda-data{
   min-width:52px;text-align:center;
-  background:var(--carvao-900);color:#fff;border-radius:8px;padding:6px 4px;
+  background:var(--grad-escuro);color:#fff;border-radius:10px;padding:7px 4px;
+  box-shadow:0 3px 10px rgba(20,20,22,0.18);
 }
 .agenda-data .num{font-size:17px;font-weight:800;line-height:1;}
 .agenda-data .mes{font-size:10px;text-transform:uppercase;color:var(--laranja-light);}
@@ -414,13 +438,14 @@ body{
   padding:2px 8px;border-radius:20px;text-transform:uppercase;
   letter-spacing:.3px;margin-top:4px;
 }
-.badge.aberta{background:#f0f0f0;color:var(--grafite-600);}
-.badge.em_andamento{background:#fde3cf;color:var(--laranja-dark);}
-.badge.concluida{background:#e2f5e8;color:var(--verde);}
-.badge.pendente{background:#fdf3d4;color:var(--amarelo);}
-.badge.agendada{background:#e2ecfb;color:#2563b5;}
-.badge.realizada{background:#e2f5e8;color:var(--verde);}
-.badge.cancelada{background:#fdecec;color:var(--vermelho);}
+.badge{color:#fff;box-shadow:0 2px 7px rgba(20,20,22,0.14);}
+.badge.aberta{background:linear-gradient(135deg,#8a8b8f,#63646a);}
+.badge.em_andamento{background:linear-gradient(135deg,#ff8c3d,#e05e00);}
+.badge.concluida{background:linear-gradient(135deg,#3cb56a,#2f9e58);}
+.badge.pendente{background:linear-gradient(135deg,#e6ab2e,#c88a12);}
+.badge.agendada{background:linear-gradient(135deg,#3b82d6,#2563b5);}
+.badge.realizada{background:linear-gradient(135deg,#3cb56a,#2f9e58);}
+.badge.cancelada{background:linear-gradient(135deg,#e05a50,#c93c33);}
 .badge-prioridade{
   display:inline-block;font-size:10px;font-weight:700;
   padding:2px 7px;border-radius:6px;text-transform:uppercase;
@@ -432,6 +457,8 @@ body{
   display:inline-block;font-size:11px;font-weight:600;
   padding:3px 9px;border-radius:20px;color:#fff;
 }
+.chip-mkt{background:linear-gradient(135deg,#9b7bff,#6d4dff)!important;box-shadow:0 2px 8px rgba(109,77,255,0.32);}
+.chip-fin{background:linear-gradient(135deg,#3cb56a,#2f9e58)!important;box-shadow:0 2px 8px rgba(47,158,88,0.32);}
 
 /* Tabelas / listas */
 .tabela{width:100%;border-collapse:collapse;}
@@ -494,14 +521,15 @@ body{
 
 .btn-flutuante{
   position:fixed;bottom:22px;right:22px;
-  width:56px;height:56px;border-radius:50%;
-  background:var(--laranja);color:#fff;
+  width:58px;height:58px;border-radius:50%;
+  background:var(--grad-laranja);color:#fff;
   border:none;font-size:26px;font-weight:700;
-  box-shadow:0 10px 25px rgba(254,110,11,0.4);
+  box-shadow:0 12px 30px rgba(254,110,11,0.45);
   cursor:pointer;z-index:40;
   display:flex;align-items:center;justify-content:center;
+  transition:transform .16s, box-shadow .16s, filter .16s;
 }
-.btn-flutuante:hover{background:var(--laranja-dark);}
+.btn-flutuante:hover{filter:brightness(1.06);transform:translateY(-2px) scale(1.04);box-shadow:0 16px 38px rgba(254,110,11,0.5);}
 
 /* Modal */
 .modal-overlay{
@@ -1301,11 +1329,11 @@ function areaDaTarefa(t){ return t.area || "financeiro"; }
 function areaDaVisita(v){ return v.area || "financeiro"; }
 function areasDisponiveis(){
   if (!usuarioAtual) return ["financeiro"];
-  if (usuarioAtual.tipo === "admin") return ["marketing","financeiro"];
+  if (usuarioAtual.tipo === "admin") return ["financeiro","marketing"];
   if (usuarioAtual.tipo === "equipe") return [usuarioAtual.area === "marketing" ? "marketing" : "financeiro"];
   const arr = [];
-  if (usuarioAtual.acesso_marketing === true) arr.push("marketing");
   if (usuarioAtual.acesso_financeiro === true) arr.push("financeiro");
+  if (usuarioAtual.acesso_marketing === true) arr.push("marketing");
   if (arr.length === 0) arr.push("financeiro"); // legado / fallback
   return arr;
 }
@@ -2884,8 +2912,8 @@ function renderizarTabelaClientes() {
   corpo.innerHTML = todosClientes.map(c => {
     const semFlag = (!c.acesso_marketing && !c.acesso_financeiro);
     const areas = [];
-    if (c.acesso_marketing) areas.push('<span class="chip-categoria" style="background:#7a5cff">📣 Marketing</span>');
-    if (c.acesso_financeiro || semFlag) areas.push('<span class="chip-categoria" style="background:#2f9e58">💰 Financeiro</span>');
+    if (c.acesso_marketing) areas.push('<span class="chip-categoria chip-mkt">📣 Marketing</span>');
+    if (c.acesso_financeiro || semFlag) areas.push('<span class="chip-categoria chip-fin">💰 Financeiro</span>');
     return `
     <tr>
       <td><strong>${c.nome}</strong></td>
@@ -3153,11 +3181,11 @@ function renderizarTabelaEquipe() {
   document.getElementById("equipe-vazio").style.display = todaEquipe.length ? "none" : "block";
   corpo.innerHTML = todaEquipe.map(m => {
     const info = AREAS[m.area] || AREAS.financeiro;
-    const cor = m.area === "marketing" ? "#7a5cff" : "#2f9e58";
+    const chipCls = m.area === "marketing" ? "chip-mkt" : "chip-fin";
     return `
     <tr>
       <td><strong>${m.nome}</strong></td>
-      <td><span class="chip-categoria" style="background:${cor}">${info.icone} ${info.label}</span></td>
+      <td><span class="chip-categoria ${chipCls}">${info.icone} ${info.label}</span></td>
       <td>${m.email}</td>
       <td><span class="badge ${m.ativo ? 'concluida' : 'aberta'}">${m.ativo ? 'Ativo' : 'Inativo'}</span></td>
       <td>
