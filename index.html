@@ -275,7 +275,7 @@ body{
 #sidebar{
   position:fixed;top:0;left:0;bottom:0;
   width:270px;
-  background:var(--grad-escuro);
+  background:linear-gradient(180deg,#ff8c3d 0%,#fe6e0b 45%,#e05e00 100%);
   z-index:100;
   transform:translateX(-100%);
   transition:transform .25s ease;
@@ -285,11 +285,11 @@ body{
 #sidebar.aberta{transform:translateX(0);}
 #btn-fixar-sidebar{
   position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;
-  background:rgba(255,255,255,0.08);border:none;color:#9a9ba0;cursor:pointer;
+  background:rgba(255,255,255,0.18);border:none;color:#fff;cursor:pointer;
   font-size:14px;transition:all .15s;z-index:2;
 }
-#btn-fixar-sidebar:hover{background:rgba(255,255,255,0.16);}
-#btn-fixar-sidebar.ativo{background:var(--laranja);color:#fff;}
+#btn-fixar-sidebar:hover{background:rgba(255,255,255,0.30);}
+#btn-fixar-sidebar.ativo{background:#fff;color:var(--laranja-dark);}
 @media(min-width:900px){
   body.sidebar-fixa #sidebar{transform:none;}
   body.sidebar-fixa #overlay-menu{display:none!important;}
@@ -298,7 +298,7 @@ body{
 }
 .sidebar-header{
   padding:0 20px 20px;
-  border-bottom:1px solid rgba(255,255,255,0.08);
+  border-bottom:1px solid rgba(255,255,255,0.28);
   margin-bottom:12px;
   display:flex;align-items:center;gap:12px;
 }
@@ -309,11 +309,11 @@ body{
 }
 .sidebar-header .marca img{width:100%;height:100%;object-fit:contain;}
 .sidebar-header h2{color:#fff;font-size:15px;font-weight:700;}
-.sidebar-header p{color:#a8a9ac;font-size:11.5px;}
+.sidebar-header p{color:rgba(255,255,255,0.9);font-size:11.5px;}
 .menu-item{
   display:flex;align-items:center;gap:12px;
   padding:13px 20px;
-  color:#c3c4c7;
+  color:rgba(255,255,255,0.92);
   text-decoration:none;
   font-size:14.5px;
   font-weight:500;
@@ -322,31 +322,31 @@ body{
   transition:background .15s;
   position:relative;
 }
-.menu-item:hover{background:rgba(255,255,255,0.05);}
+.menu-item:hover{background:rgba(255,255,255,0.14);}
 .menu-item.ativo{
-  background:linear-gradient(90deg, rgba(254,110,11,0.22), rgba(254,110,11,0.03));
-  border-left-color:var(--laranja);
-  color:#fff;
+  background:rgba(255,255,255,0.20);
+  border-left-color:#fff;
+  color:#fff;font-weight:700;
 }
 .menu-item .icone{font-size:17px;width:22px;text-align:center;}
 .menu-item .contador{
-  margin-left:auto;background:var(--laranja);color:#fff;
+  margin-left:auto;background:#fff;color:var(--laranja-dark);
   font-size:10.5px;font-weight:700;border-radius:20px;
   padding:1px 7px;
 }
 .menu-sair{
   margin-top:auto;
   padding:16px 20px;
-  border-top:1px solid rgba(255,255,255,0.08);
+  border-top:1px solid rgba(255,255,255,0.28);
 }
 .menu-sair .btn-outline{
-  background:transparent;
-  border:1.5px solid rgba(255,255,255,0.3);
-  color:#e8e8ea;
+  background:rgba(255,255,255,0.12);
+  border:1.5px solid rgba(255,255,255,0.6);
+  color:#fff;
 }
 .menu-sair .btn-outline:hover{
-  background:rgba(255,255,255,0.08);
-  border-color:rgba(255,255,255,0.5);
+  background:rgba(255,255,255,0.22);
+  border-color:#fff;
 }
 
 /* Conteúdo */
@@ -1338,6 +1338,12 @@ function areasDisponiveis(){
   return arr;
 }
 function filtrarPorArea(lista){ return lista.filter(function(x){ return (x.area || "financeiro") === areaAtual; }); }
+function clienteTemArea(c, area){
+  if (area === "marketing") return c.acesso_marketing === true;
+  // financeiro (inclui clientes legados sem flags definidas)
+  return c.acesso_financeiro === true || (!c.acesso_marketing && !c.acesso_financeiro);
+}
+function clientesDaArea(){ return todosClientes.filter(function(c){ return clienteTemArea(c, areaAtual); }); }
 function montarSeletorArea(){
   const sel = document.getElementById("seletor-area");
   if (!sel) return;
@@ -1786,10 +1792,13 @@ function montarSelectMesAno() {
 }
 
 function popularSelectClienteTarefa() {
+  const disponiveis = clientesDaArea();
+  const vazio = `<option value="">Nenhuma empresa nesta \u00e1rea</option>`;
+  const opts = disponiveis.map(c => `<option value="${c.id}">${c.nome} — ${c.empresa || ""}</option>`).join("");
   const sel = document.getElementById("tarefa-cliente");
-  if (sel) sel.innerHTML = todosClientes.map(c => `<option value="${c.id}">${c.nome} — ${c.empresa || ""}</option>`).join("");
+  if (sel) sel.innerHTML = opts || vazio;
   const selV = document.getElementById("visita-cliente");
-  if (selV) selV.innerHTML = todosClientes.map(c => `<option value="${c.id}">${c.nome} — ${c.empresa || ""}</option>`).join("");
+  if (selV) selV.innerHTML = opts || vazio;
 }
 
 function popularSelectCategoriaTarefa() {
