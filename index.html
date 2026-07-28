@@ -844,6 +844,28 @@ select.select-status{
   </section>
 </template>
 
+<template id="tpl-areas">
+  <section class="pagina" id="pagina-areas">
+    <div class="page-header">
+      <div>
+        <h1>Áreas de acesso</h1>
+        <p>Áreas usadas para organizar projetos, equipe e o acesso de clientes</p>
+      </div>
+      <button class="btn btn-laranja btn-sm" id="btn-nova-area">+ Nova área</button>
+    </div>
+    <div class="card">
+      <div class="card-titulo">Áreas cadastradas</div>
+      <div class="tabela-scroll">
+        <table class="tabela">
+          <thead><tr><th>Área</th><th>Cor</th><th>Status</th><th></th></tr></thead>
+          <tbody id="tabela-areas-corpo"></tbody>
+        </table>
+      </div>
+      <div class="vazio" id="areas-vazio" style="display:none">Nenhuma área cadastrada.</div>
+    </div>
+  </section>
+</template>
+
 <template id="tpl-agenda">
   <section class="pagina" id="pagina-agenda">
     <div class="page-header">
@@ -1013,14 +1035,7 @@ select.select-status{
     <div class="campo"><label>Telefone</label><input type="text" id="cliente-telefone" placeholder="(opcional)"></div>
     <div class="campo">
       <label>Áreas que a empresa pode acessar</label>
-      <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
-        <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-weight:500;font-size:14px;color:var(--texto);letter-spacing:normal;cursor:pointer;margin:0;">
-          <input type="checkbox" id="cliente-acesso-marketing" style="width:auto;accent-color:var(--laranja);"> 📣 Marketing
-        </label>
-        <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-weight:500;font-size:14px;color:var(--texto);letter-spacing:normal;cursor:pointer;margin:0;">
-          <input type="checkbox" id="cliente-acesso-financeiro" checked style="width:auto;accent-color:var(--laranja);"> 💰 Financeiro
-        </label>
-      </div>
+      <div id="cliente-areas-lista" style="display:flex;flex-direction:column;gap:8px;margin-top:4px;"></div>
     </div>
     <div class="modal-acoes">
       <button class="btn btn-outline" id="btn-cancelar-cliente">Cancelar</button>
@@ -1039,14 +1054,28 @@ select.select-status{
     <div class="campo"><label>Senha de acesso</label><input type="text" id="equipe-senha" placeholder="Defina uma senha"></div>
     <div class="campo">
       <label>Área de acesso</label>
-      <select id="equipe-area">
-        <option value="marketing">📣 Marketing</option>
-        <option value="financeiro">💰 Financeiro</option>
-      </select>
+      <select id="equipe-area"></select>
     </div>
     <div class="modal-acoes">
       <button class="btn btn-outline" id="btn-cancelar-equipe">Cancelar</button>
       <button class="btn" id="btn-salvar-equipe">Cadastrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Nova/Editar Área de acesso -->
+<div class="modal-overlay" id="modal-area">
+  <div class="modal">
+    <h3 id="modal-area-titulo">Nova área</h3>
+    <input type="hidden" id="area-id">
+    <div class="campo"><label>Nome</label><input type="text" id="area-nome" placeholder="Ex: Comercial, Jurídico..."></div>
+    <div class="campo-linha">
+      <div class="campo"><label>Ícone (emoji)</label><input type="text" id="area-icone" placeholder="Ex: 🤝" maxlength="4" style="text-align:center;font-size:20px;"></div>
+      <div class="campo"><label>Cor</label><input type="color" id="area-cor" value="#fe6e0b" style="height:44px;padding:4px;"></div>
+    </div>
+    <div class="modal-acoes">
+      <button class="btn btn-outline" id="btn-cancelar-area">Cancelar</button>
+      <button class="btn" id="btn-salvar-area">Cadastrar</button>
     </div>
   </div>
 </div>
@@ -1296,6 +1325,7 @@ document.getElementById("btn-diagnostico").addEventListener("click", async () =>
   await testar("Tabela cap_usuarios", "cap_usuarios?select=id&limit=5");
   await testar("Tabela cap_tarefas", "cap_tarefas?select=id&limit=5");
   await testar("Tabela cap_categorias", "cap_categorias?select=id&limit=5");
+  await testar("Tabela cap_areas", "cap_areas?select=id&limit=5");
   await testar("Tabela cap_visitas", "cap_visitas?select=id&limit=5");
 
   linhas.push("");
@@ -1317,32 +1347,53 @@ let graficoAnual, graficoStatus;
 let calendarioMesAtual = new Date().getMonth();
 let calendarioAnoAtual = new Date().getFullYear();
 let todaEquipe = [];
+let todasAreas = [];
 
-/* ================= AREAS (Marketing / Financeiro) ================= */
+/* ================= AREAS (dinâmico, cadastrado em "Áreas de acesso") ================= */
 let areaAtual = "financeiro";
-const AREAS = {
-  marketing:  { label: "Marketing",  icone: "📣" },
-  financeiro: { label: "Financeiro", icone: "💰" }
+// Marketing e Financeiro sempre existem, mesmo que a tabela cap_areas ainda não
+// tenha sido criada/migrada — assim o sistema nunca fica sem áreas de acesso.
+const AREAS_PADRAO = {
+  marketing:  { label: "Marketing",  icone: "📣", cor: "#6d4dff", ativo: true },
+  financeiro: { label: "Financeiro", icone: "💰", cor: "#2f9e58", ativo: true }
 };
+let AREAS = { ...AREAS_PADRAO };
+function reconstruirAreas() {
+  if (!todasAreas || !todasAreas.length) { AREAS = { ...AREAS_PADRAO }; return; }
+  const novo = {};
+  todasAreas.forEach(function (a) {
+    novo[a.id] = { label: a.nome, icone: a.icone || "🔷", cor: a.cor || "#6d6e71", ativo: a.ativo !== false };
+  });
+  if (!novo.marketing) novo.marketing = AREAS_PADRAO.marketing;
+  if (!novo.financeiro) novo.financeiro = AREAS_PADRAO.financeiro;
+  AREAS = novo;
+}
 function ehGestor(){ return usuarioAtual && (usuarioAtual.tipo === "admin" || usuarioAtual.tipo === "equipe"); }
 function areaDaTarefa(t){ return t.area || "financeiro"; }
 function areaDaVisita(v){ return v.area || "financeiro"; }
-function areasDisponiveis(){
-  if (!usuarioAtual) return ["financeiro"];
-  if (usuarioAtual.tipo === "admin") return ["financeiro","marketing"];
-  if (usuarioAtual.tipo === "equipe") return [usuarioAtual.area === "marketing" ? "marketing" : "financeiro"];
+// Retorna a lista de ids de área que um cliente pode acessar.
+// Se o cliente já tiver o campo novo "areas_acesso" (array), usa ele.
+// Caso contrário, cai para os flags antigos (acesso_marketing/acesso_financeiro),
+// o que mantém clientes cadastrados antes desta atualização funcionando normalmente.
+function areasDoCliente(c){
+  if (!c) return ["financeiro"];
+  if (Array.isArray(c.areas_acesso) && c.areas_acesso.length) {
+    return c.areas_acesso.filter(function(id){ return !!AREAS[id]; });
+  }
   const arr = [];
-  if (usuarioAtual.acesso_financeiro === true) arr.push("financeiro");
-  if (usuarioAtual.acesso_marketing === true) arr.push("marketing");
-  if (arr.length === 0) arr.push("financeiro"); // legado / fallback
+  if (c.acesso_marketing === true) arr.push("marketing");
+  if (c.acesso_financeiro === true || (!c.acesso_marketing && !c.acesso_financeiro)) arr.push("financeiro");
   return arr;
 }
-function filtrarPorArea(lista){ return lista.filter(function(x){ return x && (x.area || "financeiro") === areaAtual; }); }
-function clienteTemArea(c, area){
-  if (area === "marketing") return c.acesso_marketing === true;
-  // financeiro (inclui clientes legados sem flags definidas)
-  return c.acesso_financeiro === true || (!c.acesso_marketing && !c.acesso_financeiro);
+function areasDisponiveis(){
+  if (!usuarioAtual) return ["financeiro"];
+  if (usuarioAtual.tipo === "admin") return Object.keys(AREAS).filter(function(id){ return AREAS[id].ativo !== false; });
+  if (usuarioAtual.tipo === "equipe") return [AREAS[usuarioAtual.area] ? usuarioAtual.area : "financeiro"];
+  const arr = areasDoCliente(usuarioAtual);
+  return arr.length ? arr : ["financeiro"];
 }
+function filtrarPorArea(lista){ return lista.filter(function(x){ return x && (x.area || "financeiro") === areaAtual; }); }
+function clienteTemArea(c, area){ return areasDoCliente(c).includes(area); }
 function clientesDaArea(){ return todosClientes.filter(function(c){ return clienteTemArea(c, areaAtual); }); }
 function montarSeletorArea(){
   const sel = document.getElementById("seletor-area");
@@ -1526,6 +1577,7 @@ function montarMenu() {
   if (usuarioAtual.tipo === "admin") {
     itens.push({ id: "solicitacoes", label: "Solicitações", icone: "📥", contador: true });
     itens.push({ id: "categorias", label: "Categorias", icone: "🏷️" });
+    itens.push({ id: "areas", label: "Áreas de acesso", icone: "🔐" });
     itens.push({ id: "clientes", label: "Clientes", icone: "👥" });
     itens.push({ id: "equipe", label: "Equipe", icone: "👷" });
   } else if (usuarioAtual.tipo === "equipe") {
@@ -1555,6 +1607,7 @@ function atualizarPaginaAtual() {
     "pagina-concluidos": renderizarTabelaConcluidos,
     "pagina-solicitacoes": renderizarSolicitacoes,
     "pagina-categorias": renderizarTabelaCategorias,
+    "pagina-areas": renderizarTabelaAreas,
     "pagina-agenda": renderizarAgendaPagina,
     "pagina-clientes": renderizarTabelaClientes,
     "pagina-equipe": renderizarTabelaEquipe,
@@ -1588,7 +1641,7 @@ function irParaPagina(id) {
   // Sem esta linha a página fica renderizada no DOM porém invisível (tela em branco).
   conteudo.querySelectorAll(".pagina").forEach(function (secao) { secao.classList.add("ativa"); });
   document.querySelectorAll(".menu-item").forEach(m => m.classList.toggle("ativo", m.dataset.pagina === id));
-  const titulos = { dashboard: "Painel geral", tarefas: "Projetos", concluidos: "Projetos concluídos", solicitacoes: "Solicitações", categorias: "Categorias", agenda: "Agenda de visitas", clientes: "Clientes", equipe: "Equipe" };
+  const titulos = { dashboard: "Painel geral", tarefas: "Projetos", concluidos: "Projetos concluídos", solicitacoes: "Solicitações", categorias: "Categorias", areas: "Áreas de acesso", agenda: "Agenda de visitas", clientes: "Clientes", equipe: "Equipe" };
   document.getElementById("topbar-sub").textContent = titulos[id] || "";
 
   // Cada etapa roda isoladamente: um erro em uma delas não impede as outras,
@@ -1602,6 +1655,7 @@ function irParaPagina(id) {
       if (id === "concluidos") renderizarTabelaConcluidos();
       if (id === "solicitacoes") renderizarSolicitacoes();
       if (id === "categorias") renderizarTabelaCategorias();
+      if (id === "areas") renderizarTabelaAreas();
       if (id === "agenda") renderizarAgendaPagina();
       if (id === "clientes") renderizarTabelaClientes();
       if (id === "equipe") renderizarTabelaEquipe();
@@ -1720,6 +1774,8 @@ async function carregarComSeguranca(promessa, valorPadrao, nomeRecurso) {
 async function carregarDados() {
   avisosCarregamento = [];
   todasCategorias = await carregarComSeguranca(sb(`cap_categorias?select=*&order=nome.asc`), [], "categorias");
+  todasAreas = await carregarComSeguranca(sb(`cap_areas?select=*&order=nome.asc`), [], "áreas de acesso");
+  reconstruirAreas();
 
   if (usuarioAtual.tipo === "admin") {
     todosClientes = await carregarComSeguranca(sb(`cap_usuarios?tipo=eq.cliente&select=*&order=nome.asc`), [], "clientes");
@@ -1837,6 +1893,9 @@ function ligarEventosPagina(id) {
   }
   if (id === "categorias") {
     document.getElementById("btn-nova-categoria").addEventListener("click", abrirNovaCategoria);
+  }
+  if (id === "areas") {
+    document.getElementById("btn-nova-area").addEventListener("click", abrirNovaArea);
   }
   if (id === "agenda") {
     document.getElementById("btn-nova-visita").addEventListener("click", abrirNovaVisita);
@@ -2619,6 +2678,122 @@ document.addEventListener("click", async (e) => {
   }
 });
 
+/* ================= ÁREAS DE ACESSO ================= */
+// Gera um identificador estável (slug) a partir do nome digitado, ex:
+// "Recursos Humanos" -> "recursos_humanos". Esse identificador é o que fica
+// gravado em cap_tarefas.area, cap_usuarios.area etc.
+function gerarSlugArea(nome) {
+  return nome
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 40);
+}
+
+function renderizarTabelaAreas() {
+  if (!document.getElementById("areas-vazio")) return;
+  const corpo = document.getElementById("tabela-areas-corpo");
+  document.getElementById("areas-vazio").style.display = todasAreas.length ? "none" : "block";
+  corpo.innerHTML = todasAreas.map(a => {
+    const protegida = (a.id === "marketing" || a.id === "financeiro");
+    const inativa = a.ativo === false;
+    return `
+    <tr>
+      <td><span class="chip-categoria" style="background:${a.cor || '#6d6e71'}">${a.icone || '🔷'} ${a.nome}</span></td>
+      <td><span class="chip-categoria" style="background:${a.cor || '#6d6e71'}">${a.cor || '#6d6e71'}</span></td>
+      <td><span class="badge ${inativa ? 'aberta' : 'concluida'}">${inativa ? 'Inativa' : 'Ativa'}</span></td>
+      <td>
+        <div class="acoes-linha">
+          <button class="btn-icone" onclick="abrirEdicaoArea('${a.id}')" title="Editar">✎</button>
+          <button class="btn-icone" onclick="alternarAtivoArea('${a.id}', ${!inativa})" title="${inativa ? 'Ativar' : 'Desativar'}">${inativa ? '▶' : '⏸'}</button>
+          ${protegida ? '' : `<button class="btn-icone perigo" onclick="excluirArea('${a.id}')" title="Excluir">🗑</button>`}
+        </div>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+function abrirNovaArea() {
+  document.getElementById("modal-area-titulo").textContent = "Nova área";
+  document.getElementById("btn-salvar-area").textContent = "Cadastrar";
+  document.getElementById("area-id").value = "";
+  document.getElementById("area-nome").value = "";
+  document.getElementById("area-icone").value = "🔷";
+  document.getElementById("area-cor").value = "#fe6e0b";
+  document.getElementById("modal-area").style.display = "flex";
+}
+
+window.abrirEdicaoArea = function(id) {
+  const a = todasAreas.find(a => a.id === id);
+  if (!a) return;
+  document.getElementById("modal-area-titulo").textContent = "Editar área";
+  document.getElementById("btn-salvar-area").textContent = "Salvar";
+  document.getElementById("area-id").value = a.id;
+  document.getElementById("area-nome").value = a.nome || "";
+  document.getElementById("area-icone").value = a.icone || "🔷";
+  document.getElementById("area-cor").value = a.cor || "#fe6e0b";
+  document.getElementById("modal-area").style.display = "flex";
+};
+document.getElementById("btn-cancelar-area")?.addEventListener("click", () => document.getElementById("modal-area").style.display = "none");
+
+window.alternarAtivoArea = async function(id, ativoAtual) {
+  try {
+    await sb(`cap_areas?id=eq.${id}`, { method: "PATCH", body: JSON.stringify({ ativo: !ativoAtual }) });
+    const a = todasAreas.find(a => a.id === id);
+    if (a) a.ativo = !ativoAtual;
+    reconstruirAreas();
+    renderizarTabelaAreas();
+    montarSeletorArea();
+  } catch (err) { alert("Erro: " + err.message); }
+};
+
+window.excluirArea = async function(id) {
+  if (id === "marketing" || id === "financeiro") {
+    alert("Esta área é usada em várias partes do sistema e não pode ser excluída. Você pode desativá-la.");
+    return;
+  }
+  if (!confirm("Excluir esta área? Membros de equipe ou clientes ainda associados a ela deixarão de ser exibidos corretamente até serem reatribuídos a outra área.")) return;
+  try {
+    await sb(`cap_areas?id=eq.${id}`, { method: "DELETE" });
+    todasAreas = todasAreas.filter(a => a.id !== id);
+    reconstruirAreas();
+    renderizarTabelaAreas();
+    montarSeletorArea();
+  } catch (err) { alert("Erro ao excluir área: " + err.message); }
+};
+
+document.addEventListener("click", async (e) => {
+  if (e.target && e.target.id === "btn-salvar-area") {
+    const idExistente = document.getElementById("area-id").value;
+    const nome = document.getElementById("area-nome").value.trim();
+    const icone = document.getElementById("area-icone").value.trim() || "🔷";
+    const cor = document.getElementById("area-cor").value;
+    if (!nome) { alert("Informe o nome da área."); return; }
+    try {
+      if (idExistente) {
+        const atualizado = await sb(`cap_areas?id=eq.${idExistente}`, { method: "PATCH", body: JSON.stringify({ nome, icone, cor }) });
+        const idx = todasAreas.findIndex(a => a.id === idExistente);
+        if (idx !== -1) todasAreas[idx] = atualizado[0];
+      } else {
+        const slug = gerarSlugArea(nome);
+        if (!slug) { alert("Não foi possível gerar um identificador a partir desse nome. Tente outro nome."); return; }
+        if (todasAreas.some(a => a.id === slug)) { alert("Já existe uma área com um identificador equivalente. Escolha um nome diferente."); return; }
+        const criado = await sb(`cap_areas`, { method: "POST", body: JSON.stringify({ id: slug, nome, icone, cor, ativo: true }) });
+        todasAreas.push(criado[0]);
+      }
+      todasAreas.sort((a,b) => a.nome.localeCompare(b.nome));
+      reconstruirAreas();
+      renderizarTabelaAreas();
+      montarSeletorArea();
+      document.getElementById("modal-area").style.display = "none";
+    } catch (err) {
+      alert("Erro ao salvar área (talvez já exista uma com esse identificador): " + err.message);
+    }
+  }
+});
+
 /* ================= AGENDA DE VISITAS (item 7) ================= */
 function visitasFiltradas() {
   const empresaF = document.getElementById("filtro-agenda-empresa")?.value;
@@ -2934,10 +3109,13 @@ function renderizarTabelaClientes() {
   const corpo = document.getElementById("tabela-clientes-corpo");
   document.getElementById("clientes-vazio").style.display = todosClientes.length ? "none" : "block";
   corpo.innerHTML = todosClientes.map(c => {
-    const semFlag = (!c.acesso_marketing && !c.acesso_financeiro);
-    const areas = [];
-    if (c.acesso_marketing) areas.push('<span class="chip-categoria chip-mkt">📣 Marketing</span>');
-    if (c.acesso_financeiro || semFlag) areas.push('<span class="chip-categoria chip-fin">💰 Financeiro</span>');
+    const areas = areasDoCliente(c).map(function(id){
+      const info = AREAS[id];
+      if (!info) return "";
+      const chipCls = id === "marketing" ? "chip-mkt" : (id === "financeiro" ? "chip-fin" : "");
+      const chipStyle = chipCls ? "" : ` style="background:${info.cor || '#6d6e71'}"`;
+      return `<span class="chip-categoria ${chipCls}"${chipStyle}>${info.icone} ${info.label}</span>`;
+    });
     return `
     <tr>
       <td><strong>${c.nome}</strong></td>
@@ -2972,17 +3150,19 @@ document.addEventListener("click", async (e) => {
     const nome = document.getElementById("cliente-nome").value.trim();
     const email = document.getElementById("cliente-email").value.trim().toLowerCase();
     const senha = document.getElementById("cliente-senha").value;
-    const acessoMkt = document.getElementById("cliente-acesso-marketing").checked;
-    const acessoFin = document.getElementById("cliente-acesso-financeiro").checked;
+    const areasSelecionadas = Array.from(document.querySelectorAll('#cliente-areas-lista input[data-area-cliente]:checked')).map(function(el){ return el.dataset.areaCliente; });
     if (!nome || !email) { alert("Preencha ao menos nome e e-mail."); return; }
     if (!id && !senha) { alert("Defina uma senha de acesso."); return; }
-    if (!acessoMkt && !acessoFin) { alert("Marque ao menos uma área de acesso (Marketing ou Financeiro)."); return; }
+    if (areasSelecionadas.length === 0) { alert("Marque ao menos uma área de acesso."); return; }
     const dados = {
       nome, email,
       empresa: document.getElementById("cliente-empresa").value.trim(),
       telefone: document.getElementById("cliente-telefone").value.trim(),
-      acesso_marketing: acessoMkt,
-      acesso_financeiro: acessoFin
+      areas_acesso: areasSelecionadas,
+      // acesso_marketing/acesso_financeiro seguem gravados por compatibilidade com
+      // partes antigas do sistema; quem manda de verdade é areas_acesso.
+      acesso_marketing: areasSelecionadas.includes("marketing"),
+      acesso_financeiro: areasSelecionadas.includes("financeiro")
     };
     if (senha) dados.senha = senha;
     try {
@@ -3175,15 +3355,13 @@ function abrirNovoCliente() {
   document.getElementById("cliente-senha").value = "";
   document.getElementById("cliente-senha").placeholder = "Defina uma senha";
   document.getElementById("cliente-telefone").value = "";
-  document.getElementById("cliente-acesso-marketing").checked = false;
-  document.getElementById("cliente-acesso-financeiro").checked = true;
+  popularAreasCliente(["financeiro"]);
   document.getElementById("btn-salvar-cliente").textContent = "Cadastrar";
   document.getElementById("modal-cliente").style.display = "flex";
 }
 window.abrirEdicaoCliente = function(id) {
   const c = todosClientes.find(c => c.id === id);
   if (!c) return;
-  const semFlag = (!c.acesso_marketing && !c.acesso_financeiro);
   document.getElementById("modal-cliente-titulo").textContent = "Editar cliente";
   document.getElementById("cliente-id").value = c.id;
   document.getElementById("cliente-nome").value = c.nome || "";
@@ -3192,11 +3370,22 @@ window.abrirEdicaoCliente = function(id) {
   document.getElementById("cliente-senha").value = "";
   document.getElementById("cliente-senha").placeholder = "Deixe em branco para manter a atual";
   document.getElementById("cliente-telefone").value = c.telefone || "";
-  document.getElementById("cliente-acesso-marketing").checked = c.acesso_marketing === true;
-  document.getElementById("cliente-acesso-financeiro").checked = (c.acesso_financeiro === true) || semFlag;
+  popularAreasCliente(areasDoCliente(c));
   document.getElementById("btn-salvar-cliente").textContent = "Salvar";
   document.getElementById("modal-cliente").style.display = "flex";
 };
+
+// Preenche a lista de checkboxes de área do modal de cliente com todas as
+// áreas ativas cadastradas em "Áreas de acesso" (não só Marketing/Financeiro).
+function popularAreasCliente(selecionadas) {
+  const lista = document.getElementById("cliente-areas-lista");
+  if (!lista) return;
+  const ativas = Object.keys(AREAS).filter(id => AREAS[id].ativo !== false);
+  lista.innerHTML = ativas.map(id => `
+    <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-weight:500;font-size:14px;color:var(--texto);letter-spacing:normal;cursor:pointer;margin:0;">
+      <input type="checkbox" data-area-cliente="${id}" ${selecionadas.includes(id) ? "checked" : ""} style="width:auto;accent-color:var(--laranja);"> ${AREAS[id].icone} ${AREAS[id].label}
+    </label>`).join("");
+}
 
 /* ================= EQUIPE: tabela + CRUD ================= */
 function renderizarTabelaEquipe() {
@@ -3205,11 +3394,12 @@ function renderizarTabelaEquipe() {
   document.getElementById("equipe-vazio").style.display = todaEquipe.length ? "none" : "block";
   corpo.innerHTML = todaEquipe.map(m => {
     const info = AREAS[m.area] || AREAS.financeiro;
-    const chipCls = m.area === "marketing" ? "chip-mkt" : "chip-fin";
+    const chipCls = m.area === "marketing" ? "chip-mkt" : (m.area === "financeiro" ? "chip-fin" : "");
+    const chipStyle = chipCls ? "" : ` style="background:${info.cor || '#6d6e71'}"`;
     return `
     <tr>
       <td><strong>${m.nome}</strong></td>
-      <td><span class="chip-categoria ${chipCls}">${info.icone} ${info.label}</span></td>
+      <td><span class="chip-categoria ${chipCls}"${chipStyle}>${info.icone} ${info.label}</span></td>
       <td>${m.email}</td>
       <td><span class="badge ${m.ativo ? 'concluida' : 'aberta'}">${m.ativo ? 'Ativo' : 'Inativo'}</span></td>
       <td>
@@ -3221,6 +3411,15 @@ function renderizarTabelaEquipe() {
     </tr>`;
   }).join("");
 }
+// Preenche o select de área do modal de equipe com todas as áreas ativas
+// cadastradas em "Áreas de acesso" (sempre inclui Marketing/Financeiro).
+function popularSelectAreaEquipe(valorSelecionado) {
+  const sel = document.getElementById("equipe-area");
+  if (!sel) return;
+  const ativas = Object.keys(AREAS).filter(id => AREAS[id].ativo !== false);
+  sel.innerHTML = ativas.map(id => `<option value="${id}">${AREAS[id].icone} ${AREAS[id].label}</option>`).join("");
+  sel.value = (valorSelecionado && ativas.includes(valorSelecionado)) ? valorSelecionado : (ativas[0] || "financeiro");
+}
 function abrirNovoMembro() {
   document.getElementById("modal-equipe-titulo").textContent = "Novo membro";
   document.getElementById("equipe-id").value = "";
@@ -3228,7 +3427,7 @@ function abrirNovoMembro() {
   document.getElementById("equipe-email").value = "";
   document.getElementById("equipe-senha").value = "";
   document.getElementById("equipe-senha").placeholder = "Defina uma senha";
-  document.getElementById("equipe-area").value = "marketing";
+  popularSelectAreaEquipe("marketing");
   document.getElementById("btn-salvar-equipe").textContent = "Cadastrar";
   document.getElementById("modal-equipe").style.display = "flex";
 }
@@ -3241,7 +3440,7 @@ window.abrirEdicaoMembro = function(id) {
   document.getElementById("equipe-email").value = m.email || "";
   document.getElementById("equipe-senha").value = "";
   document.getElementById("equipe-senha").placeholder = "Deixe em branco para manter a atual";
-  document.getElementById("equipe-area").value = (m.area === "financeiro") ? "financeiro" : "marketing";
+  popularSelectAreaEquipe(m.area);
   document.getElementById("btn-salvar-equipe").textContent = "Salvar";
   document.getElementById("modal-equipe").style.display = "flex";
 };
