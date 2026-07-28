@@ -1410,6 +1410,7 @@ function trocarArea(nova){
   if (!areas.includes(nova)) return;
   areaAtual = nova;
   try { localStorage.setItem("cap_area_" + usuarioAtual.id, nova); } catch (e) {}
+  if (typeof popularFiltroEmpresas === "function") popularFiltroEmpresas();
   atualizarPaginaAtual();
 }
 document.getElementById("seletor-area")?.addEventListener("change", function(e){ trocarArea(e.target.value); });
@@ -1809,7 +1810,7 @@ async function carregarDados() {
 }
 
 function popularFiltroEmpresas() {
-  const empresas = [...new Set(todosClientes.map(c => c.empresa).filter(Boolean))].sort();
+  const empresas = [...new Set(clientesDaArea().map(c => c.empresa).filter(Boolean))].sort();
   const opts = `<option value="">Todas as empresas</option>` + empresas.map(e => `<option value="${e}">${e}</option>`).join("");
   const f1 = document.getElementById("filtro-empresa");
   const f2 = document.getElementById("filtro-tarefas-empresa");
@@ -2049,7 +2050,7 @@ function renderizarGraficoAnual(lista) {
   const ateF = parseDataSegura(document.getElementById("filtro-dash-ate")?.value);
   const usandoIntervalo = !!(deF || ateF);
 
-  todasTarefas.forEach(t => {
+  filtrarPorArea(todasTarefas).forEach(t => {
     let base = t.data_prevista;
     if (t.status === "concluida" && t.data_conclusao) base = t.data_conclusao;
     if (!base) return;
@@ -3329,7 +3330,7 @@ setInterval(function () {
 /* Cliente: busca atualizações no servidor periodicamente, para enxergar
    quando o consultor inicia/pausa um trabalho sem precisar recarregar. */
 async function sincronizarTarefasCliente() {
-  if (!usuarioAtual || usuarioAtual.tipo === "admin") return;
+  if (!usuarioAtual || usuarioAtual.tipo !== "cliente") return;
   if (document.hidden) return; // não gasta requisições com a aba em segundo plano
   try {
     const atualizadas = await sb(`cap_tarefas?cliente_id=eq.${usuarioAtual.id}&aprovada=eq.true&select=*&order=data_prevista.asc`);
