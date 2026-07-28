@@ -1362,7 +1362,7 @@ function reconstruirAreas() {
   if (!todasAreas || !todasAreas.length) { AREAS = { ...AREAS_PADRAO }; return; }
   const novo = {};
   todasAreas.forEach(function (a) {
-    novo[a.id] = { label: a.nome, icone: a.icone || "🔷", cor: a.cor || "#6d6e71", ativo: a.ativo !== false };
+    novo[a.id] = { label: (a.nome && a.nome.trim()) || a.id, icone: a.icone || "🔷", cor: a.cor || "#6d6e71", ativo: a.ativo !== false };
   });
   if (!novo.marketing) novo.marketing = AREAS_PADRAO.marketing;
   if (!novo.financeiro) novo.financeiro = AREAS_PADRAO.financeiro;
@@ -1400,7 +1400,7 @@ function montarSeletorArea(){
   if (!sel) return;
   const areas = areasDisponiveis();
   if (!areas.includes(areaAtual)) areaAtual = areas[0];
-  sel.innerHTML = areas.map(function(a){ return `<option value="${a}">${AREAS[a].icone} ${AREAS[a].label}</option>`; }).join("");
+  sel.innerHTML = areas.map(function(a){ return `<option value="${a}" style="color:#1f2023;background:#ffffff;">${AREAS[a].icone} ${AREAS[a].label}</option>`; }).join("");
   sel.value = areaAtual;
   sel.disabled = areas.length <= 1;
   sel.style.display = "inline-block";
@@ -1504,18 +1504,8 @@ async function iniciarApp() {
     document.getElementById("tela-login").style.display = "none";
     document.getElementById("app").style.display = "block";
     document.getElementById("avatar-btn").textContent = iniciais(usuarioAtual.nome);
-    let rotuloUser = "Administrador";
-    if (usuarioAtual.tipo === "equipe") rotuloUser = "Equipe " + (AREAS[usuarioAtual.area] ? AREAS[usuarioAtual.area].label : "");
-    else if (usuarioAtual.tipo === "cliente") rotuloUser = usuarioAtual.empresa || usuarioAtual.nome;
-    document.getElementById("sidebar-user").textContent = rotuloUser;
-    const areasIni = areasDisponiveis();
-    let areaSalva = null;
-    try { areaSalva = localStorage.getItem("cap_area_" + usuarioAtual.id); } catch (e) {}
-    areaAtual = (areaSalva && areasIni.includes(areaSalva)) ? areaSalva : areasIni[0];
-    montarSeletorArea();
-    console.log("[iniciarApp] Cabeçalho e sidebar configurados");
   } catch (err) {
-    console.error("[iniciarApp] Falha ao configurar cabeçalho/sidebar:", err);
+    console.error("[iniciarApp] Falha ao preparar tela inicial:", err);
   }
 
   try {
@@ -1530,6 +1520,25 @@ async function iniciarApp() {
     console.log("[iniciarApp] Dados carregados. Tarefas:", todasTarefas.length, "Clientes:", todosClientes.length);
   } catch (err) {
     console.error("[iniciarApp] Falha ao carregar dados:", err);
+  }
+
+  // Cabeçalho, sidebar e seletor de área só são montados DEPOIS de carregarDados(),
+  // pois dependem de AREAS já estar completo (com as áreas cadastradas em
+  // "Áreas de acesso", não só os padrões Marketing/Financeiro). Montar isso antes
+  // fazia o seletor cair sempre no financeiro para áreas personalizadas.
+  try {
+    let rotuloUser = "Administrador";
+    if (usuarioAtual.tipo === "equipe") rotuloUser = "Equipe " + (AREAS[usuarioAtual.area] ? AREAS[usuarioAtual.area].label : "");
+    else if (usuarioAtual.tipo === "cliente") rotuloUser = usuarioAtual.empresa || usuarioAtual.nome;
+    document.getElementById("sidebar-user").textContent = rotuloUser;
+    const areasIni = areasDisponiveis();
+    let areaSalva = null;
+    try { areaSalva = localStorage.getItem("cap_area_" + usuarioAtual.id); } catch (e) {}
+    areaAtual = (areaSalva && areasIni.includes(areaSalva)) ? areaSalva : areasIni[0];
+    montarSeletorArea();
+    console.log("[iniciarApp] Cabeçalho e sidebar configurados");
+  } catch (err) {
+    console.error("[iniciarApp] Falha ao configurar cabeçalho/sidebar:", err);
   }
 
   try {
