@@ -1793,8 +1793,8 @@ async function carregarDados() {
     todasTarefas = await carregarComSeguranca(sb(`cap_tarefas?select=*&order=data_prevista.asc`), [], "tarefas");
     todasVisitas = await carregarComSeguranca(sb(`cap_visitas?select=*&order=data_visita.asc`), [], "visitas");
   } else if (usuarioAtual.tipo === "equipe") {
-    const areaEq = usuarioAtual.area === "marketing" ? "marketing" : "financeiro";
-    const fArea = areaEq === "financeiro" ? "or=(area.eq.financeiro,area.is.null)" : "area=eq.marketing";
+    const areaEq = (usuarioAtual.area && AREAS[usuarioAtual.area]) ? usuarioAtual.area : "financeiro";
+    const fArea = areaEq === "financeiro" ? "or=(area.eq.financeiro,area.is.null)" : `area=eq.${encodeURIComponent(areaEq)}`;
     todosClientes = await carregarComSeguranca(sb(`cap_usuarios?tipo=eq.cliente&select=*&order=nome.asc`), [], "clientes");
     todasTarefas = await carregarComSeguranca(sb(`cap_tarefas?${fArea}&select=*&order=data_prevista.asc`), [], "tarefas");
     todasVisitas = await carregarComSeguranca(sb(`cap_visitas?${fArea}&select=*&order=data_visita.asc`), [], "visitas");
