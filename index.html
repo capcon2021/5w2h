@@ -1248,6 +1248,23 @@ function garantirChartJs(callback) {
 </script>
 
 <script>
+/* ================= CONFIG WHATSAPP (aviso de novas solicitações) =================
+   Usa o serviço gratuito CallMeBot. Para ativar:
+   1) Veja o número atual do bot em https://www.callmebot.com/blog/free-api-whatsapp-messages/
+   2) Salve esse número nos contatos e envie pelo WhatsApp: I allow callmebot to send me messages
+   3) O bot responde com sua APIKEY. Cole ela abaixo em WHATSAPP_APIKEY.
+   Enquanto WHATSAPP_APIKEY estiver vazio, nenhum aviso é enviado. */
+const WHATSAPP_TELEFONE = "554791004748";  // 55 + DDD 47 + número SEM o 9 extra (formato registrado no WhatsApp)
+const WHATSAPP_APIKEY = "7578777";          // APIKEY recebida do CallMeBot
+
+function notificarWhatsApp(texto) {
+  if (!WHATSAPP_APIKEY) return;
+  const url = `https://api.callmebot.com/whatsapp.php?phone=${WHATSAPP_TELEFONE}&text=${encodeURIComponent(texto)}&apikey=${encodeURIComponent(WHATSAPP_APIKEY)}`;
+  // "no-cors": o envio acontece mesmo sem o navegador poder ler a resposta.
+  // Erros são ignorados para nunca atrapalhar o envio da solicitação.
+  fetch(url, { mode: "no-cors" }).catch(err => console.warn("Aviso WhatsApp falhou:", err));
+}
+
 /* ================= CONFIG SUPABASE ================= */
 const SUPABASE_URL = "https://bubviycvssuduopmjchj.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1YnZpeWN2c3N1ZHVvcG1qY2hqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MDQ1OTMsImV4cCI6MjEwMDM4MDU5M30.kj1yct4cGxtCFjsu00oCgPC3bwRyU7T6gZEJ4zGxoIY";
@@ -2609,6 +2626,17 @@ document.getElementById("btn-enviar-solicitacao").addEventListener("click", asyn
     }
     const novaSolicitacao = { ...criado[0], area: criado[0].area || body.area };
     todasTarefas.unshift(novaSolicitacao);
+    const prioridadeTxt = { baixa: "Baixa", media: "Média", alta: "Alta" }[body.prioridade] || body.prioridade;
+    const prazoTxt = body.data_prevista ? body.data_prevista.split("-").reverse().join("/") : "não informado";
+    notificarWhatsApp(
+      `📥 *Nova solicitação no sistema CAP*\n\n` +
+      `*Cliente:* ${usuarioAtual.empresa || usuarioAtual.nome || "—"}\n` +
+      `*Título:* ${body.titulo}\n` +
+      (body.descricao ? `*Descrição:* ${body.descricao}\n` : "") +
+      `*Prioridade:* ${prioridadeTxt}\n` +
+      `*Prazo desejado:* ${prazoTxt}\n\n` +
+      `Acesse o sistema em Solicitações para aprovar ou rejeitar.`
+    );
     document.getElementById("modal-solicitacao").style.display = "none";
     alert("Solicitação enviada! A CAP Consultoria vai analisar em breve.");
   } catch (err) {
