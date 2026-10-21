@@ -2153,6 +2153,9 @@ function htmlCategoria(id) {
   const c = getCategoriaById(id);
   return c ? `<span class="chip-categoria" style="background:${esc(c.cor)}">${esc(c.nome)}</span>` : '<span class="txt-fraco">—</span>';
 }
+// Projetos concluídos antes da migração v2 não passam pelo aceite do cliente
+// (ficam com fechado_pelo_cliente = true e sem data de fechamento).
+function aceiteNaoSeAplica(t) { return !!t.fechado_pelo_cliente && !t.fechado_cliente_em; }
 function htmlStatusTarefa(t) {
   if (t.aprovada === false) return '<span class="badge pendente">Aguardando aprovação</span>';
   return `<span class="badge ${t.status}">${labelStatus(t.status)}</span>`;
@@ -2677,7 +2680,7 @@ document.addEventListener("keydown", e => {
 
 /* ================= ENTREGAS (cliente fecha o projeto concluído) ================= */
 let entregasAba = "pendentes";
-function entregasCliente() { return filtrarPorArea(todasTarefas).filter(t => t.status === "concluida" && t.aprovada !== false); }
+function entregasCliente() { return filtrarPorArea(todasTarefas).filter(t => t.status === "concluida" && t.aprovada !== false && !aceiteNaoSeAplica(t)); }
 function entregasPendentes() { return entregasCliente().filter(t => !t.fechado_pelo_cliente); }
 function atualizarContadorEntregas() {
   const b = byId("contador-entregas");
@@ -2693,7 +2696,7 @@ function htmlTimeline(t) {
     { r: "Início (implantação)", d: fmtData(t.data_inicio), ok: !!t.data_inicio },
     { r: "Execução iniciada", d: t.iniciado_execucao_em ? fmtDataHora(t.iniciado_execucao_em) : (t.data_inicio ? fmtData(t.data_inicio) : "—"), ok: execOk },
     { r: "Finalizado", d: fmtData(t.data_conclusao), ok: t.status === "concluida" },
-    { r: "Fechado pelo cliente", d: fmtDataHora(t.fechado_cliente_em), ok: !!t.fechado_pelo_cliente },
+    { r: "Fechado pelo cliente", d: aceiteNaoSeAplica(t) ? "Anterior ao aceite" : fmtDataHora(t.fechado_cliente_em), ok: !!t.fechado_pelo_cliente },
   ];
   let atualMarcado = false;
   return `<div class="timeline">` + passos.map(p => {
@@ -2947,7 +2950,7 @@ function projetosConcluidosFiltrados() {
   if (empresaF) lista = lista.filter(t => { const c = getClienteById(t.cliente_id); return c && c.empresa === empresaF; });
   if (categoriaF) lista = lista.filter(t => t.categoria_id === categoriaF);
   if (aceiteF === "pendente") lista = lista.filter(t => !t.fechado_pelo_cliente);
-  if (aceiteF === "fechado") lista = lista.filter(t => !!t.fechado_pelo_cliente);
+  if (aceiteF === "fechado") lista = lista.filter(t => !!t.fechado_pelo_cliente && !aceiteNaoSeAplica(t));
   if (deF) lista = lista.filter(t => t.data_conclusao && t.data_conclusao >= deF);
   if (ateF) lista = lista.filter(t => t.data_conclusao && t.data_conclusao <= ateF);
   if (busca) lista = lista.filter(t => textoBuscaTarefa(t).includes(busca));
@@ -2956,6 +2959,7 @@ function projetosConcluidosFiltrados() {
   return lista;
 }
 function htmlAceite(t) {
+  if (aceiteNaoSeAplica(t)) return '<span class="badge aberta" title="Concluído antes da implantação do aceite do cliente">Anterior ao aceite</span>';
   if (t.fechado_pelo_cliente) return `<span class="badge concluida" title="Fechado em ${fmtDataHora(t.fechado_cliente_em)}">Fechado${t.fechado_cliente_em ? " " + new Date(t.fechado_cliente_em).toLocaleDateString("pt-BR") : ""}</span>`;
   return '<span class="badge pendente">Aguardando aceite</span>';
 }
@@ -3172,7 +3176,7 @@ window.verDetalhesTarefa = function(id) {
     ["Lead time", lead === null ? "—" : plural(lead, "dia", "dias") + (leadTimeEmCurso(t) ? " (em curso)" : "")],
     ["Tempo dedicado", formatarTempo(tempoTotalTarefa(t))],
   ];
-  if (t.status === "concluida") info.push(["Aceite do cliente", t.fechado_pelo_cliente ? "Fechado em " + fmtDataHora(t.fechado_cliente_em) : "Aguardando aceite"]);
+  if (t.status === "concluida") info.push(["Aceite do cliente", aceiteNaoSeAplica(t) ? "Anterior ao aceite" : (t.fechado_pelo_cliente ? "Fechado em " + fmtDataHora(t.fechado_cliente_em) : "Aguardando aceite")]);
   const blocos = [
     ["Descrição", t.descricao], ["Objetivo", t.objetivo], ["Indicador", t.indicador],
     ["Abrangência", abrangenciaTexto], ["Observações do cliente", t.observacao_cliente]
